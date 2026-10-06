@@ -61,6 +61,11 @@
     const opts = monthly ? { month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short', year: 'numeric' };
     return new Date(ts(d)).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
   }
+  /** Badge for a series whose latest observation is old (source publishing lag). */
+  function lagBadge(date) {
+    const days = (Date.now() - ts(date)) / DAY;
+    return days > 120 ? ` <span class="badge warn" title="Latest observation is ${Math.round(days / 30)} months old; the source has not published newer data">lagging</span>` : '';
+  }
   function relTime(isoStr) {
     const mins = Math.round((Date.now() - Date.parse(isoStr)) / 60000);
     if (mins < 60) return `${Math.max(mins, 0)} min ago`;
@@ -221,7 +226,7 @@
         </div>
         <div class="sub">
           ${p?.lastMove ? `Last move ${fmtBp(p.lastMove.delta)} on ${fmtDate(p.lastMove.date)}` : p ? 'No change in history window' : 'Policy rate unavailable'}
-          ${y ? ` · 10Y as of ${fmtDate(y.date, true)}` : ''}
+          ${y ? ` · 10Y as of ${fmtDate(y.date, true)}${lagBadge(y.date)}` : ''}
         </div>
       </article>`;
   }
@@ -293,7 +298,7 @@
         <td>${p?.lastMove ? fmtDate(p.lastMove.date) : '—'}</td>
         <td class="num">${p ? deltaHtml(p.d1y) : '—'}</td>
         <td class="num">${p && y ? fmtBp(y.value - p.value) : '—'}</td>
-        <td class="muted">${p ? fmtDate(p.date) : '—'}</td>
+        <td class="muted">${p ? fmtDate(p.date) + lagBadge(p.date) : '—'}</td>
       </tr>`;
     }, 8);
     return `${banner()}
@@ -321,7 +326,7 @@
         <td class="num">${p ? fmtPct(p.value) : '—'}</td>
         <td class="num">${p && y ? fmtBp(y.value - p.value) : '—'}</td>
         <td class="num">${capSeg && y ? fmtBp(capSeg.value - y.value) : '—'}</td>
-        <td class="muted">${y ? fmtDate(y.date, true) : 'not covered'}</td>
+        <td class="muted">${y ? fmtDate(y.date, true) + lagBadge(y.date) : 'not covered'}</td>
       </tr>`;
     }, 8);
     return `${banner()}
