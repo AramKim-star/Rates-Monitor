@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Wevest">
-  <!-- Placeholder mark. Replace this file with the official Wevest logo (logo.svg, or update the <img> src in index.html). -->
-  <rect width="64" height="64" rx="14" fill="#ffffff"/>
-  <path d="M12 18l9 28 11-22 11 22 9-28" fill="none" stroke="#0b2545" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M12 18l9 28" fill="none" stroke="#2a78d6" stroke-width="6" stroke-linecap="round"/>
-</svg>
