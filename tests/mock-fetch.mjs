@@ -28,6 +28,26 @@ function fredCsv(id, i) {
   return rows.join('\n');
 }
 
+// WS_LONG_CPI: monthly, both y/y (771) and index (628) units. Japan only
+// returns the index so the y/y-from-index fallback is exercised.
+function bisCpiCsv(url) {
+  const areas = url.match(/WS_LONG_CPI\/M\.([^/]+?)\.?\/all/)[1].split('+');
+  const rows = ['FREQ,REF_AREA,UNIT_MEASURE,TIME_PERIOD,OBS_VALUE'];
+  areas.forEach((a, i) => {
+    let idx = 100;
+    for (let y = 2010; y <= 2026; y++) {
+      for (let m = 1; m <= 12 && !(y === 2026 && m > 8); m++) {
+        const yoy = 2 + (i % 4) * 0.5 + 1.5 * Math.sin((y - 2010 + m / 12) / 1.5 + i);
+        idx *= 1 + yoy / 1200;
+        const p = `${y}-${String(m).padStart(2, '0')}`;
+        if (a !== 'JP') rows.push(`M,${a},771,${p},${yoy.toFixed(2)}`);
+        rows.push(`M,${a},628,${p},${idx.toFixed(3)}`);
+      }
+    }
+  });
+  return rows.join('\n');
+}
+
 let n = 0;
 globalThis.fetch = async (url) => {
   const u = String(url);
@@ -37,6 +57,7 @@ globalThis.fetch = async (url) => {
   });
   if (u.includes('stats.bis.org')) {
     if (FAIL.has('bis')) return respond('down', 503);
+    if (u.includes('WS_LONG_CPI')) return FAIL.has('cpi') ? respond('down', 503) : respond(bisCpiCsv(u));
     return respond(bisCsv(u));
   }
   if (u.includes('fred.stlouisfed.org')) {

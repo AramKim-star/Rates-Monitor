@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { MARKETS, REGIONS } from './markets.mjs';
 import {
   parseSdmxCsv, parseSdmxJson, parseFredCsv, parseFredApiJson,
-  compressSteps, roundSeries, validateSeries,
+  compressSteps, roundSeries, validateSeries, yoyFromIndex,
 } from './lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -40,15 +40,15 @@ async function fetchText(url, headers = {}, { retries = 3, timeoutMs = 60000 } =
   throw new Error(`${url}: ${lastErr.message}`);
 }
 
-// ---------- BIS central bank policy rates ----------
+// ---------- BIS statistics API ----------
 
-async function fetchBisPolicyRates() {
-  const areas = MARKETS.map((m) => m.bis).join('+');
-  const base = `https://stats.bis.org/api/v1/data/WS_CBPOL/D.${areas}/all?startPeriod=${START}&detail=dataonly`;
+/** Fetch one BIS dataflow, trying SDMX-CSV first and SDMX-JSON as a fallback. */
+async function fetchBis(dataflow, key, label, keyBy = ['REF_AREA']) {
+  const base = `https://stats.bis.org/api/v1/data/${dataflow}/${key}/all?startPeriod=${START}&detail=dataonly`;
   const attempts = [
-    { url: base, headers: { Accept: 'application/vnd.sdmx.data+csv;version=1.0.0' }, parse: parseSdmxCsv },
-    { url: `${base}&format=csv`, headers: {}, parse: parseSdmxCsv },
-    { url: base, headers: { Accept: 'application/vnd.sdmx.data+json;version=1.0.0' }, parse: (t) => parseSdmxJson(JSON.parse(t)) },
+    { url: base, headers: { Accept: 'application/vnd.sdmx.data+csv;version=1.0.0' }, parse: (t) => parseSdmxCsv(t, { keyBy }) },
+    { url: `${base}&format=csv`, headers: {}, parse: (t) => parseSdmxCsv(t, { keyBy }) },
+    { url: base, headers: { Accept: 'application/vnd.sdmx.data+json;version=1.0.0' }, parse: (t) => parseSdmxJson(JSON.parse(t), { keyBy }) },
   ];
   const errors = [];
   for (const a of attempts) {
@@ -61,7 +61,23 @@ async function fetchBisPolicyRates() {
       errors.push(err.message);
     }
   }
-  throw new Error(`BIS policy rates unavailable: ${errors.join(' | ')}`);
+  throw new Error(`BIS ${label} unavailable: ${errors.join(' | ')}`);
+}
+
+const BIS_AREAS = () => MARKETS.map((m) => m.bis).join('+');
+
+/** Central bank policy rates, daily. Returns { [bisArea]: points }. */
+function fetchBisPolicyRates() {
+  return fetchBis('WS_CBPOL', `D.${BIS_AREAS()}`, 'policy rates');
+}
+
+// BIS consumer prices (WS_LONG_CPI), monthly. Unit 771 = year-on-year change
+// in %, 628 = index (2010 = 100). The unit dimension is left open so either
+// can be used; 771 is preferred and 628 is converted to y/y as a fallback.
+const CPI_YOY = '771';
+const CPI_INDEX = '628';
+function fetchBisCpi() {
+  return fetchBis('WS_LONG_CPI', `M.${BIS_AREAS()}.`, 'consumer prices', ['REF_AREA', 'UNIT_MEASURE']);
 }
 
 // ---------- FRED 10-year government bond yields ----------
@@ -97,6 +113,7 @@ async function main() {
   const errors = [];
   const policy = {};
   const yield10y = {};
+  const cpi = {};
   let freshCount = 0;
 
   // Policy rates
@@ -121,6 +138,37 @@ async function main() {
     } else {
       if (bis) errors.push({ dataset: 'policy', market: m.id, message: problem });
       if (prev?.series?.policy?.[m.id]) policy[m.id] = { ...prev.series.policy[m.id], stale: true };
+    }
+  }
+
+  // Consumer price inflation (y/y %)
+  let bisCpi = null;
+  try {
+    bisCpi = await fetchBisCpi();
+  } catch (err) {
+    errors.push({ dataset: 'cpi', market: '*', message: err.message });
+  }
+  for (const m of MARKETS) {
+    const meta = {
+      source: 'BIS consumer prices (WS_LONG_CPI)',
+      seriesId: `WS_LONG_CPI/M.${m.bis}.${CPI_YOY}`,
+      sourceUrl: 'https://data.bis.org/topics/CPI',
+      frequency: 'monthly, % change year on year',
+    };
+    let raw = bisCpi?.[`${m.bis}|${CPI_YOY}`];
+    if (!raw?.length && bisCpi?.[`${m.bis}|${CPI_INDEX}`]?.length) {
+      raw = yoyFromIndex(bisCpi[`${m.bis}|${CPI_INDEX}`]);
+      meta.seriesId = `WS_LONG_CPI/M.${m.bis}.${CPI_INDEX}`;
+      meta.frequency = 'monthly, % change year on year (computed from index)';
+    }
+    raw = raw && raw.filter(([d]) => d >= START);
+    const problem = raw?.length ? validateSeries(raw, { min: -30, max: 300 }) : 'missing from BIS response';
+    if (!problem) {
+      cpi[m.id] = { ...seriesEntry(roundSeries(raw, 2), meta), fetchedAt: now };
+      freshCount++;
+    } else {
+      if (bisCpi) errors.push({ dataset: 'cpi', market: m.id, message: problem });
+      if (prev?.series?.cpi?.[m.id]) cpi[m.id] = { ...prev.series.cpi[m.id], stale: true };
     }
   }
 
@@ -155,7 +203,7 @@ async function main() {
     generatedAt: now,
     regions: REGIONS,
     markets: MARKETS.map(({ id, name, region, bank }) => ({ id, name, region, bank })),
-    series: { policy, yield10y },
+    series: { policy, yield10y, cpi },
     errors,
   };
   await mkdir(dirname(OUT), { recursive: true });
@@ -164,6 +212,7 @@ async function main() {
   console.log(`Wrote ${OUT}`);
   console.log(`  policy rates: ${Object.keys(policy).length}/${MARKETS.length}`);
   console.log(`  10y yields:   ${Object.keys(yield10y).length}/${MARKETS.filter((m) => m.fred).length}`);
+  console.log(`  CPI:          ${Object.keys(cpi).length}/${MARKETS.length}`);
   for (const e of errors) console.warn(`  warn [${e.dataset}] ${e.market}: ${e.message}`);
 }
 

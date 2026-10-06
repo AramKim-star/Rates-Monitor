@@ -50,32 +50,33 @@ function sortPoints(points) {
 /**
  * Parse an SDMX-CSV response (as served by the BIS statistics API).
  * Header cells may be plain ids ("REF_AREA") or "id:label" pairs; both work.
- * Returns { [refArea]: [[isoDate, value], ...] } sorted by date.
+ * Returns { [key]: [[isoDate, value], ...] } sorted by date, where key is the
+ * REF_AREA, or the `keyBy` dimension values joined with "|" (e.g. "US|771").
  */
-export function parseSdmxCsv(text) {
+export function parseSdmxCsv(text, { keyBy = ['REF_AREA'] } = {}) {
   const rows = parseCsv(text.replace(/^﻿/, ''));
   if (rows.length < 2) throw new Error('SDMX-CSV: no data rows');
   const header = rows[0].map((h) => h.split(':')[0].trim().toUpperCase());
-  const iArea = header.indexOf('REF_AREA');
+  const iKeys = keyBy.map((k) => header.indexOf(k));
   const iTime = header.indexOf('TIME_PERIOD');
   const iValue = header.indexOf('OBS_VALUE');
-  if (iArea < 0 || iTime < 0 || iValue < 0) {
+  if (iKeys.some((i) => i < 0) || iTime < 0 || iValue < 0) {
     throw new Error(`SDMX-CSV: missing columns (got ${header.join(',')})`);
   }
   const out = {};
   for (const r of rows.slice(1)) {
-    const area = (r[iArea] || '').split(':')[0].trim();
+    const key = iKeys.map((i) => (r[i] || '').split(':')[0].trim()).join('|');
     const date = normaliseDate(r[iTime]);
     const value = toNumber(r[iValue]);
-    if (!area || !date || value === null) continue;
-    (out[area] ||= []).push([date, value]);
+    if (!key || key.startsWith('|') || !date || value === null) continue;
+    (out[key] ||= []).push([date, value]);
   }
   for (const k of Object.keys(out)) sortPoints(out[k]);
   return out;
 }
 
 /** Parse an SDMX-JSON 1.0 data message. Same return shape as parseSdmxCsv. */
-export function parseSdmxJson(json) {
+export function parseSdmxJson(json, { keyBy = ['REF_AREA'] } = {}) {
   const data = json.data || json;
   const structure = data.structure || json.structure;
   const dataSet = (data.dataSets || json.dataSets || [])[0];
@@ -83,12 +84,12 @@ export function parseSdmxJson(json) {
   const seriesDims = structure.dimensions.series;
   const timeDim = structure.dimensions.observation.find((d) => d.id === 'TIME_PERIOD')
     || structure.dimensions.observation[0];
-  const areaPos = seriesDims.findIndex((d) => d.id === 'REF_AREA');
-  if (areaPos < 0) throw new Error('SDMX-JSON: no REF_AREA dimension');
+  const positions = keyBy.map((k) => seriesDims.findIndex((d) => d.id === k));
+  if (positions.some((p) => p < 0)) throw new Error(`SDMX-JSON: missing dimension among ${keyBy.join(',')}`);
   const out = {};
   for (const [key, series] of Object.entries(dataSet.series || {})) {
     const idx = key.split(':').map(Number);
-    const area = seriesDims[areaPos].values[idx[areaPos]].id;
+    const area = positions.map((p) => seriesDims[p].values[idx[p]].id).join('|');
     for (const [obsKey, obs] of Object.entries(series.observations || {})) {
       const date = normaliseDate(timeDim.values[Number(obsKey)].id);
       const value = toNumber(Array.isArray(obs) ? obs[0] : obs);
@@ -159,4 +160,21 @@ export function validateSeries(points, { min = -5, max = 100 } = {}) {
   const bad = points.find(([, v]) => v < min || v > max);
   if (bad) return `implausible value ${bad[1]} on ${bad[0]}`;
   return null;
+}
+
+/**
+ * Year-on-year % change from a monthly index series: value for each month
+ * compared with the same month a year earlier. Months without a prior-year
+ * observation are skipped.
+ */
+export function yoyFromIndex(points, dp = 2) {
+  const byMonth = new Map(points.map(([d, v]) => [d.slice(0, 7), v]));
+  const f = 10 ** dp;
+  const out = [];
+  for (const [d, v] of points) {
+    const prevKey = `${Number(d.slice(0, 4)) - 1}${d.slice(4, 7)}`;
+    const prev = byMonth.get(prevKey);
+    if (prev) out.push([d, Math.round((v / prev - 1) * 100 * f) / f]);
+  }
+  return out;
 }

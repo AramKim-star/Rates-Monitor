@@ -21,6 +21,20 @@ test('writes policy and yield series for every covered market', () => {
   assert.equal(data.series.policy.US.lastObservation, '2026-10-05');
   assert.equal(data.series.yield10y.GB.lastObservation, '2026-08-01');
   assert.equal(data.series.yield10y.BR, undefined); // no FRED series configured
+  assert.equal(data.series.cpi.US.lastObservation, '2026-08-01');
+  assert.equal(data.series.cpi.BR.seriesId, 'WS_LONG_CPI/M.BR.771');
+  // Japan has only the index in the mock: y/y is derived from it
+  assert.equal(data.series.cpi.JP.seriesId, 'WS_LONG_CPI/M.JP.628');
+  assert.ok(data.series.cpi.JP.points.length > 12);
+});
+
+test('a CPI outage keeps the previous CPI data, flagged stale', () => {
+  const out = join(mkdtempSync(join(tmpdir(), 'rates-')), 'rates.json');
+  run(out);
+  run(out, { MOCK_FAIL: 'cpi' });
+  const data = JSON.parse(readFileSync(out, 'utf8'));
+  assert.equal(data.series.cpi.US.stale, true);
+  assert.equal(data.series.policy.US.stale, undefined);
 });
 
 test('a failed source keeps previous data, flagged stale', () => {

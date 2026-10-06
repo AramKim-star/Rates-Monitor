@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseCsv, parseSdmxCsv, parseSdmxJson, parseFredCsv, parseFredApiJson,
-  compressSteps, normaliseDate, validateSeries,
+  compressSteps, normaliseDate, validateSeries, yoyFromIndex,
 } from '../scripts/lib.mjs';
 
 test('parseCsv handles quotes, escaped quotes and CRLF', () => {
@@ -78,4 +78,17 @@ test('validateSeries flags empty and implausible series', () => {
   assert.equal(validateSeries([]), 'empty series');
   assert.match(validateSeries([['2026-01-01', 500]]), /implausible/);
   assert.equal(validateSeries([['2026-01-01', -0.75]]), null);
+});
+
+test('parseSdmxCsv can key by several dimensions', () => {
+  const csv = 'FREQ,REF_AREA,UNIT_MEASURE,TIME_PERIOD,OBS_VALUE\nM,US,771,2026-07,2.9\nM,US,628,2026-07,160.1\n';
+  assert.deepEqual(parseSdmxCsv(csv, { keyBy: ['REF_AREA', 'UNIT_MEASURE'] }), {
+    'US|771': [['2026-07-01', 2.9]],
+    'US|628': [['2026-07-01', 160.1]],
+  });
+});
+
+test('yoyFromIndex compares each month with the same month a year earlier', () => {
+  const idx = [['2025-01-01', 100], ['2025-02-01', 101], ['2026-01-01', 103], ['2026-02-01', 102.01]];
+  assert.deepEqual(yoyFromIndex(idx), [['2026-01-01', 3], ['2026-02-01', 1]]);
 });

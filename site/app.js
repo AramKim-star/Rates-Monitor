@@ -10,10 +10,11 @@
   const METRICS = {
     policy: { stepped: true },
     yield10y: { stepped: false },
+    cpi: { stepped: false },
     cap: { stepped: false },
   };
   const RANGES = { '1Y': 1, '5Y': 5, '10Y': 10, Max: null };
-  const ROUTES = { dashboard: {}, policy: {}, yields: {}, caps: {}, sources: {} };
+  const ROUTES = { dashboard: {}, policy: {}, yields: {}, cpi: {}, caps: {}, sources: {} };
 
   const state = {
     route: 'dashboard',
@@ -67,12 +68,19 @@
     const bp = Math.round(d * 100);
     return (bp > 0 ? '+' : bp < 0 ? '−' : '±') + Math.abs(bp) + ' bp';
   }
-  function deltaHtml(d, suffix = '') {
+  /** Change in percentage points, e.g. +0.4 pp (used for inflation). */
+  function fmtPp(d) {
+    if (d == null) return '';
+    const v = Math.round(d * 10) / 10;
+    return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(1) + ' pp';
+  }
+  function deltaHtml(d, suffix = '', unit = 'bp') {
     if (d == null) return '<span class="flat">—</span>';
-    const bp = Math.round(d * 100);
+    // Direction follows the rounded value shown, so "±0.0 pp" never gets an arrow.
+    const bp = unit === 'pp' ? Math.round(d * 10) * 10 : Math.round(d * 100);
     const cls = bp > 0 ? 'up' : bp < 0 ? 'down' : 'flat';
     const arrow = bp > 0 ? '▲' : bp < 0 ? '▼' : '■';
-    return `<span class="${cls}">${arrow} ${fmtBp(d)}</span>${suffix}`;
+    return `<span class="${cls}">${arrow} ${unit === 'pp' ? fmtPp(d) : fmtBp(d)}</span>${suffix}`;
   }
   function fmtDate(d, monthly = false) {
     if (!d) return '—';
@@ -220,10 +228,11 @@
   function marketCard(m) {
     const p = rates ? summary('policy', m.id) : null;
     const y = rates ? summary('yield10y', m.id) : null;
+    const i = rates ? summary('cpi', m.id) : null;
     const c = caps?.markets?.[m.id];
     const capSeg = c ? c.segments.find((s) => s.name === c.headline) || c.segments[0] : null;
     const sel = state.selected.includes(m.id);
-    const stale = (p?.meta?.stale || y?.meta?.stale) ? `<span class="badge warn" title="${esc(t('badge.stale.title'))}">${t('badge.stale')}</span>` : '';
+    const stale = (p?.meta?.stale || y?.meta?.stale || i?.meta?.stale) ? `<span class="badge warn" title="${esc(t('badge.stale.title'))}">${t('badge.stale')}</span>` : '';
     const na = t('card.na');
     const oneY = ` <span class="muted">${t('card.1y')}</span>`;
     return `
@@ -247,6 +256,11 @@
             <div class="delta">${y ? deltaHtml(y.d1y, oneY) : ''}</div>
           </div>
           <div class="metric">
+            <div class="label">${t('card.cpi')}</div>
+            <div class="value ${i ? '' : 'na'}">${i ? fmtPct(i.value, 1) : na}</div>
+            <div class="delta">${i ? deltaHtml(i.d1y, oneY, 'pp') : ''}</div>
+          </div>
+          <div class="metric">
             <div class="label">${t('card.cap')}</div>
             <div class="value ${capSeg ? '' : 'na'}">${capSeg ? (c.approximate ? '≈' : '') + fmtPct(capSeg.value) : na}</div>
             <div class="delta muted" title="${capSeg ? esc(L(capSeg, 'name')) : ''}">${capSeg ? esc(shorten(L(capSeg, 'name'), 16)) : ''}</div>
@@ -255,6 +269,7 @@
         <div class="sub">
           ${p?.lastMove ? t('card.lastMove', { bp: fmtBp(p.lastMove.delta), date: fmtDate(p.lastMove.date) }) : p ? t('card.noChange') : t('card.policyNA')}
           ${y ? ` · ${t('card.y10asof', { date: fmtDate(y.date, true) })}${lagBadge(y.date)}` : ''}
+          ${i ? ` · ${t('card.cpiAsof', { date: fmtDate(i.date, true) })}${lagBadge(i.date)}` : ''}
         </div>
       </article>`;
   }
@@ -368,6 +383,32 @@
       </section>`;
   }
 
+  function viewCpi() {
+    const rows = groupedRows((m) => {
+      const i = rates && summary('cpi', m.id);
+      const p = rates && summary('policy', m.id);
+      return `<tr data-row="${m.id}" class="${state.selected.includes(m.id) ? 'selected' : ''}" style="--row-color:${slotColor(m.id)}">
+        <td><b>${esc(mName(m))}</b>${i?.meta?.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td>
+        <td class="num"><b>${i ? fmtPct(i.value, 1) : '—'}</b></td>
+        <td class="num">${i ? deltaHtml(i.dPrev, '', 'pp') : '—'}</td>
+        <td class="num">${i ? deltaHtml(i.d1y, '', 'pp') : '—'}</td>
+        <td class="num">${p ? fmtPct(p.value) : '—'}</td>
+        <td class="num">${p && i ? fmtPct(p.value - i.value, 1) : '—'}</td>
+        <td class="muted">${i ? fmtDate(i.date, true) + lagBadge(i.date) : t('notCovered')}</td>
+      </tr>`;
+    }, 7);
+    return `${banner()}
+      ${timelineSection('cpi')}
+      <section class="card section">
+        <div class="section-head"><h3>${t('cpi.title')}</h3><span class="source">${t('cpi.source')}</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>${t('th.market')}</th><th class="num">${t('th.cpi')}</th><th class="num">${t('th.chg1m')}</th><th class="num">${t('th.chg1y')}</th><th class="num">${t('th.base')}</th><th class="num">${t('th.realRate')}</th><th>${t('th.month')}</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+        <div class="sub" style="margin-top:10px">${t('cpi.note')}</div>
+      </section>`;
+  }
+
   const DEFAULT_SECTORS = [
     { id: 'office', name: 'Office' }, { id: 'industrial', name: 'Industrial / Logistics' },
     { id: 'retail', name: 'Retail' }, { id: 'residential', name: 'Residential / Multifamily' },
@@ -432,6 +473,12 @@
       return `<tr><td><b>${esc(mName(m))}</b></td><td>${link(s.sourceUrl, id)}</td><td>${s.frequency === 'monthly average' ? t('freq.monthly') : esc(s.frequency)}</td>
         <td>${fmtDate(s.lastObservation, true)}${lagBadge(s.lastObservation)}${s.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td></tr>`;
     }).join('');
+    const cpiRows = ms.map((m) => {
+      const s = rates?.series?.cpi?.[m.id];
+      if (!s) return `<tr><td><b>${esc(mName(m))}</b></td><td colspan="2" class="muted">${t('src.notAvail')}</td></tr>`;
+      return `<tr><td><b>${esc(mName(m))}</b></td><td><code>${esc(s.seriesId || '')}</code>${s.seriesId?.endsWith('.628') ? ` <span class="muted">${t('src.cpi.fromIndex')}</span>` : ''}</td>
+        <td>${fmtDate(s.lastObservation, true)}${lagBadge(s.lastObservation)}${s.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td></tr>`;
+    }).join('');
     const capRows = ms.map((m) => {
       const c = caps?.markets?.[m.id];
       if (!c) return `<tr><td><b>${esc(mName(m))}</b></td><td colspan="5" class="muted">${t('caps.notCovered')}</td></tr>`;
@@ -453,6 +500,11 @@
         <h3>${t('src.y.h')}</h3>
         <p>${t('src.y.p')}</p>
         <div class="table-wrap"><table>${th('market', 'fredSeries', 'freq', 'latestMonth')}<tbody>${yieldRows}</tbody></table></div>
+      </section>
+      <section class="card section sources">
+        <h3>${t('src.cpi.h')}</h3>
+        <p>${t('src.cpi.p')}</p>
+        <div class="table-wrap"><table>${th('market', 'bisSeries', 'latestMonth')}<tbody>${cpiRows}</tbody></table></div>
       </section>
       <section class="card section sources">
         <h3>${t('src.cap.h')}</h3>
@@ -610,13 +662,13 @@
 
   // ---------- render & events ----------
   function currentMetric() {
-    return { dashboard: state.metric, policy: 'policy', yields: 'yield10y', caps: 'cap', sources: null }[state.route];
+    return { dashboard: state.metric, policy: 'policy', yields: 'yield10y', cpi: 'cpi', caps: 'cap', sources: null }[state.route];
   }
 
   function render() {
     renderNav();
     renderStatus();
-    const html = { dashboard: viewDashboard, policy: viewPolicy, yields: viewYields, caps: viewCaps, sources: viewSources }[state.route]();
+    const html = { dashboard: viewDashboard, policy: viewPolicy, yields: viewYields, cpi: viewCpi, caps: viewCaps, sources: viewSources }[state.route]();
     $('#content').innerHTML = html;
     drawChart(currentMetric());
   }

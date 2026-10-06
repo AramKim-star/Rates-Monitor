@@ -148,7 +148,7 @@ button { font: inherit; color: inherit; }
 .market-card.selected { outline: 2px solid var(--chip-active); outline-offset: -1px; }
 .market-card .head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
 .market-card .name { font-weight: 650; font-size: 15px; }
-.metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; background: var(--inset); border: 1px dashed var(--card-border); border-radius: 10px; padding: 10px; }
+.metrics { display: grid; grid-template-columns: 1fr 1fr; row-gap: 12px; gap: 8px; background: var(--inset); border: 1px dashed var(--card-border); border-radius: 10px; padding: 10px; }
 .metric .label { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 .metric .value { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 .metric .value.na { color: var(--muted); font-weight: 500; font-size: 16px; }
@@ -234,9 +234,10 @@ tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--row-color, va
 
 /* ---------- language switch (bottom of sidebar) ---------- */
 .lang-switch { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 10px 10px 12px; color: var(--sidebar-muted); font-size: 12.5px; }
-.lang-switch .lang-label { flex: 1; }
+.lang-switch .lang-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.lang-switch .lang-seg { margin-left: auto; }
 .lang-seg { display: inline-flex; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 3px; gap: 2px; }
-.lang-seg button { border: 0; background: none; color: var(--sidebar-muted); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.lang-seg button { white-space: nowrap; border: 0; background: none; color: var(--sidebar-muted); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
 .lang-seg button:hover { color: var(--sidebar-ink); }
 .lang-seg button.active { background: var(--sidebar-active); color: var(--sidebar-ink); font-weight: 600; }
 :lang(ko) body, body:lang(ko) { word-break: keep-all; }

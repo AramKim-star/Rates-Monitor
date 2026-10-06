@@ -8,6 +8,7 @@ card view of current numbers and a timeline chart, and you can filter it by regi
 |---|---|---|---|
 | **Base Rates** | Central bank policy rates, last move, 1-year change | [BIS central bank policy rates](https://data.bis.org/topics/CBPOL) (daily) | Automatic, twice daily |
 | **Interest Rates** | 10-year government bond yields, curve (10Y − base), cap-rate spread | OECD Main Economic Indicators via [FRED](https://fred.stlouisfed.org/) (monthly averages) | Automatic, twice daily |
+| **Inflation (CPI)** | Headline CPI inflation (% y/y), real base rate (base − CPI) | [BIS consumer prices](https://data.bis.org/topics/CPI) (monthly) | Automatic, twice daily |
 | **Cap Rates** | Cap rates / prime yields by property type | Broker surveys (CBRE, Knight Frank, Cushman & Wakefield) | **Manual**: edit `site/data/cap-rates.json` |
 
 Each region filter (Americas, Europe, Asia-Pacific, Middle East & Africa) applies
@@ -51,6 +52,8 @@ The site's **Sources** page (`#/sources`) lists every source live, including eac
 **Base rates**: [BIS central bank policy rates, dataset WS_CBPOL](https://data.bis.org/topics/CBPOL), daily, via the BIS statistics API. All 18 markets.
 
 **10-year yields**: [OECD Main Economic Indicators long-term interest rates](https://www.oecd.org/en/data/indicators/long-term-interest-rates.html), monthly averages, retrieved from [FRED](https://fred.stlouisfed.org/) (series `IRLTLT01{country}M156N`; India `INDIRLTLT01STM`). Not covered: Brazil, China, Hong Kong, Saudi Arabia.
+
+**Inflation (CPI)**: [BIS consumer prices, dataset WS_LONG_CPI](https://data.bis.org/topics/CPI), headline CPI, % change year on year, monthly, via the BIS statistics API. All 18 markets. Where BIS only provides the index, the y/y rate is computed from it (shown on the Sources page).
 
 **Cap rates** (manual, from named broker reports only; sectors a report doesn't cover are left blank):
 
