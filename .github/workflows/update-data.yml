@@ -1,0 +1,75 @@
+name: Update rates data
+
+on:
+  schedule:
+    # Twice daily (UTC). BIS publishes policy rates daily; FRED/OECD yields monthly.
+    - cron: '23 6,18 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/**'
+      - 'site/**'
+      - 'tests/**'
+      - '.github/workflows/update-data.yml'
+
+concurrency:
+  group: update-data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test parsers
+        run: npm test
+
+      - name: Fetch rates
+        env:
+          # Optional: a free FRED API key (Settings → Secrets → Actions) makes
+          # yield downloads more reliable. Without it the keyless CSV is used.
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: node scripts/fetch-rates.mjs
+
+      - name: Commit updated data
+        run: |
+          git config user.name "rates-monitor-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data/rates.json
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "Update rates data ($(date -u +%Y-%m-%dT%H:%MZ))"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+  deploy:
+    # Publishes site/ to GitHub Pages. Enable once under
+    # Settings → Pages → Build and deployment → Source: "GitHub Actions".
+    needs: update
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}   # pick up the data commit made by the update job
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
