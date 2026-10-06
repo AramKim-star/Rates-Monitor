@@ -147,6 +147,15 @@
     };
   }
 
+  /** Latest daily 10Y reading (US only) with change vs the previous business day. */
+  function daily10y(id) {
+    const s = rates?.series?.yield10yDaily?.[id];
+    if (!s?.points?.length) return null;
+    const pts = s.points;
+    const [date, value] = pts[pts.length - 1];
+    return { date, value, dPrev: pts.length > 1 ? value - pts[pts.length - 2][1] : null, meta: s };
+  }
+
   // ---------- selection & colour ----------
   function slotColor(id) {
     const slot = state.slots[id];
@@ -229,6 +238,7 @@
     const p = rates ? summary('policy', m.id) : null;
     const y = rates ? summary('yield10y', m.id) : null;
     const i = rates ? summary('cpi', m.id) : null;
+    const dy = rates ? daily10y(m.id) : null;
     const c = caps?.markets?.[m.id];
     const capSeg = c ? c.segments.find((s) => s.name === c.headline) || c.segments[0] : null;
     const sel = state.selected.includes(m.id);
@@ -254,6 +264,7 @@
             <div class="label">${t('card.y10')}</div>
             <div class="value ${y ? '' : 'na'}">${y ? fmtPct(y.value) : na}</div>
             <div class="delta">${y ? deltaHtml(y.d1y, oneY) : ''}</div>
+            ${dy ? `<div class="daily" title="${esc(t('daily.title'))}">${t('card.daily')} <b>${fmtPct(dy.value)}</b> <span class="muted">${fmtDate(dy.date)}</span></div>` : ''}
           </div>
           <div class="metric">
             <div class="label">${t('card.cpi')}</div>
@@ -358,12 +369,13 @@
   function viewYields() {
     const rows = groupedRows((m) => {
       const y = rates && summary('yield10y', m.id);
+      const dy = rates && daily10y(m.id);
       const p = rates && summary('policy', m.id);
       const c = caps?.markets?.[m.id];
       const capSeg = c ? c.segments.find((s) => s.name === c.headline) : null;
       return `<tr data-row="${m.id}" class="${state.selected.includes(m.id) ? 'selected' : ''}" style="--row-color:${slotColor(m.id)}">
         <td><b>${esc(mName(m))}</b>${y?.meta?.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td>
-        <td class="num"><b>${y ? fmtPct(y.value) : '—'}</b></td>
+        <td class="num"><b>${y ? fmtPct(y.value) : '—'}</b>${dy ? `<div class="daily">${t('card.daily')} ${fmtPct(dy.value)} <span class="muted">${fmtDate(dy.date)}</span></div>` : ''}</td>
         <td class="num">${y ? deltaHtml(y.dPrev) : '—'}</td>
         <td class="num">${y ? deltaHtml(y.d1y) : '—'}</td>
         <td class="num">${p ? fmtPct(p.value) : '—'}</td>
@@ -372,8 +384,29 @@
         <td class="muted">${y ? fmtDate(y.date, true) + lagBadge(y.date) : t('notCovered')}</td>
       </tr>`;
     }, 8);
+    const us = marketsInRegion().find((m) => m.id === 'US');
+    const dUS = us && daily10y('US');
+    const mUS = dUS && summary('yield10y', 'US');
+    const callout = dUS ? `
+      <section class="card section daily-callout">
+        <div class="section-head">
+          <div>
+            <h3>${t('daily.h')}</h3>
+            <div class="sub">${t('daily.sub')}</div>
+          </div>
+          <span class="source">${t('daily.source')}</span>
+        </div>
+        <div class="daily-figs">
+          <div><div class="label">${t('daily.latest', { date: fmtDate(dUS.date) })}</div><div class="big">${fmtPct(dUS.value)}</div>
+            <div class="delta">${deltaHtml(dUS.dPrev, ` <span class="muted">${t('daily.vsPrev')}</span>`)}</div></div>
+          ${mUS ? `<div><div class="label">${t('daily.monthly', { date: fmtDate(mUS.date, true) })}</div><div class="big muted-big">${fmtPct(mUS.value)}</div>
+            <div class="delta">${t('daily.gap', { bp: fmtBp(dUS.value - mUS.value) })}</div></div>` : ''}
+        </div>
+        ${dUS.meta.stale ? `<span class="badge warn">${t('badge.stale')}</span>` : ''}
+      </section>` : '';
     return `${banner()}
       ${timelineSection('yield10y')}
+      ${callout}
       <section class="card section">
         <div class="section-head"><h3>${t('yields.title')}</h3><span class="source">${t('yields.source')}</span></div>
         <div class="table-wrap"><table>
@@ -470,8 +503,11 @@
       const s = rates?.series?.yield10y?.[m.id];
       if (!s) return `<tr><td><b>${esc(mName(m))}</b></td><td colspan="3" class="muted">${t('src.y.notCovered')}</td></tr>`;
       const id = s.seriesId || (s.sourceUrl || '').split('/').pop();
+      const d = rates?.series?.yield10yDaily?.[m.id];
+      const dailyRow = d ? `<tr><td><b>${esc(mName(m))}</b> <span class="muted">${t('daily.tag')}</span></td><td>${link(d.sourceUrl, d.seriesId)}</td><td>${t('freq.daily')}</td>
+        <td>${fmtDate(d.lastObservation)}${d.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td></tr>` : '';
       return `<tr><td><b>${esc(mName(m))}</b></td><td>${link(s.sourceUrl, id)}</td><td>${s.frequency === 'monthly average' ? t('freq.monthly') : esc(s.frequency)}</td>
-        <td>${fmtDate(s.lastObservation, true)}${lagBadge(s.lastObservation)}${s.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td></tr>`;
+        <td>${fmtDate(s.lastObservation, true)}${lagBadge(s.lastObservation)}${s.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td></tr>${dailyRow}`;
     }).join('');
     const cpiRows = ms.map((m) => {
       const s = rates?.series?.cpi?.[m.id];
@@ -498,7 +534,7 @@
       </section>
       <section class="card section sources">
         <h3>${t('src.y.h')}</h3>
-        <p>${t('src.y.p')}</p>
+        <p>${t('src.y.p')} ${t('src.y.daily')}</p>
         <div class="table-wrap"><table>${th('market', 'fredSeries', 'freq', 'latestMonth')}<tbody>${yieldRows}</tbody></table></div>
       </section>
       <section class="card section sources">

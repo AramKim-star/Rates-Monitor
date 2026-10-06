@@ -22,6 +22,8 @@ test('writes policy and yield series for every covered market', () => {
   assert.equal(data.series.yield10y.GB.lastObservation, '2026-08-01');
   assert.equal(data.series.yield10y.BR, undefined); // no FRED series configured
   assert.equal(data.series.cpi.US.lastObservation, '2026-08-01');
+  assert.equal(data.series.yield10yDaily.US.seriesId, 'DGS10');
+  assert.equal(Object.keys(data.series.yield10yDaily).join(), 'US');
   assert.equal(data.series.cpi.BR.seriesId, 'WS_LONG_CPI/M.BR.771');
   // Japan has only the index in the mock: y/y is derived from it
   assert.equal(data.series.cpi.JP.seriesId, 'WS_LONG_CPI/M.JP.628');
@@ -51,7 +53,7 @@ test('exits non-zero and leaves file untouched when nothing refreshes', () => {
   const out = join(mkdtempSync(join(tmpdir(), 'rates-')), 'rates.json');
   writeFileSync(out, '{"keep":true}');
   const all = 'bis,IRLTLT01USM156N,IRLTLT01CAM156N,IRLTLT01MXM156N,IRLTLT01EZM156N,IRLTLT01GBM156N,IRLTLT01CHM156N,'
-    + 'IRLTLT01SEM156N,IRLTLT01NOM156N,IRLTLT01JPM156N,INDIRLTLT01STM,IRLTLT01KRM156N,IRLTLT01AUM156N,IRLTLT01NZM156N,IRLTLT01ZAM156N';
+    + 'IRLTLT01SEM156N,IRLTLT01NOM156N,IRLTLT01JPM156N,INDIRLTLT01STM,IRLTLT01KRM156N,IRLTLT01AUM156N,IRLTLT01NZM156N,IRLTLT01ZAM156N,DGS10';
   assert.throws(() => run(out, { MOCK_FAIL: all }));
   assert.equal(readFileSync(out, 'utf8'), '{"keep":true}');
 });

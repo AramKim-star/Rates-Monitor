@@ -51,7 +51,7 @@ The site's **Sources** page (`#/sources`) lists every source live, including eac
 
 **Base rates**: [BIS central bank policy rates, dataset WS_CBPOL](https://data.bis.org/topics/CBPOL), daily, via the BIS statistics API. All 18 markets.
 
-**10-year yields**: [OECD Main Economic Indicators long-term interest rates](https://www.oecd.org/en/data/indicators/long-term-interest-rates.html), monthly averages, retrieved from [FRED](https://fred.stlouisfed.org/) (series `IRLTLT01{country}M156N`; India `INDIRLTLT01STM`). Not covered: Brazil, China, Hong Kong, Saudi Arabia.
+**10-year yields**: [OECD Main Economic Indicators long-term interest rates](https://www.oecd.org/en/data/indicators/long-term-interest-rates.html), monthly averages, retrieved from [FRED](https://fred.stlouisfed.org/) (series `IRLTLT01{country}M156N`; India `INDIRLTLT01STM`). Not covered: Brazil, China, Hong Kong, Saudi Arabia. For the **United States only**, the daily 10-year Treasury yield ([Federal Reserve H.15, FRED DGS10](https://fred.stlouisfed.org/series/DGS10)) is also shown next to the monthly average; the monthly series remains the one used in charts, tables and spreads.
 
 **Inflation (CPI)**: [BIS consumer prices, dataset WS_LONG_CPI](https://data.bis.org/topics/CPI), headline CPI, % change year on year, monthly, via the BIS statistics API. All 18 markets. Where BIS only provides the index, the y/y rate is computed from it (shown on the Sources page).
 

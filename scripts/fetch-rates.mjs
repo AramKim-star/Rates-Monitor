@@ -20,6 +20,8 @@ import {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = process.env.RATES_OUT || join(ROOT, 'site', 'data', 'rates.json');
 const START = '2000-01-01';
+// Daily 10-year yields, shown in addition to the monthly series (US only).
+const DAILY_10Y = [{ market: 'US', fred: 'DGS10' }];
 const UA = 'rates-monitor/1.0 (+https://github.com/aramkim-star/rates-monitor)';
 
 async function fetchText(url, headers = {}, { retries = 3, timeoutMs = 60000 } = {}) {
@@ -114,6 +116,7 @@ async function main() {
   const policy = {};
   const yield10y = {};
   const cpi = {};
+  const yield10yDaily = {};
   let freshCount = 0;
 
   // Policy rates
@@ -193,6 +196,27 @@ async function main() {
     }
   }
 
+  // US only: daily 10-year Treasury constant-maturity yield (Federal Reserve H.15),
+  // shown alongside the monthly average, which stays the primary 10Y series.
+  for (const d of DAILY_10Y) {
+    const meta = {
+      source: `FRED ${d.fred} (Federal Reserve H.15, 10-year Treasury constant maturity)`,
+      seriesId: d.fred,
+      sourceUrl: `https://fred.stlouisfed.org/series/${d.fred}`,
+      frequency: 'daily (business days)',
+    };
+    try {
+      const pts = roundSeries(await fetchFredSeries(d.fred), 2);
+      const problem = validateSeries(pts);
+      if (problem) throw new Error(problem);
+      yield10yDaily[d.market] = { ...seriesEntry(pts, meta), fetchedAt: now };
+      freshCount++;
+    } catch (err) {
+      errors.push({ dataset: 'yield10yDaily', market: d.market, message: err.message });
+      if (prev?.series?.yield10yDaily?.[d.market]) yield10yDaily[d.market] = { ...prev.series.yield10yDaily[d.market], stale: true };
+    }
+  }
+
   if (freshCount === 0) {
     console.error('No series could be refreshed; leaving existing data untouched.');
     for (const e of errors) console.error(`  [${e.dataset}] ${e.market}: ${e.message}`);
@@ -203,7 +227,7 @@ async function main() {
     generatedAt: now,
     regions: REGIONS,
     markets: MARKETS.map(({ id, name, region, bank }) => ({ id, name, region, bank })),
-    series: { policy, yield10y, cpi },
+    series: { policy, yield10y, cpi, yield10yDaily },
     errors,
   };
   await mkdir(dirname(OUT), { recursive: true });
@@ -213,6 +237,7 @@ async function main() {
   console.log(`  policy rates: ${Object.keys(policy).length}/${MARKETS.length}`);
   console.log(`  10y yields:   ${Object.keys(yield10y).length}/${MARKETS.filter((m) => m.fred).length}`);
   console.log(`  CPI:          ${Object.keys(cpi).length}/${MARKETS.length}`);
+  console.log(`  daily 10Y:    ${Object.keys(yield10yDaily).join(', ') || 'none'}`);
   for (const e of errors) console.warn(`  warn [${e.dataset}] ${e.market}: ${e.message}`);
 }
 

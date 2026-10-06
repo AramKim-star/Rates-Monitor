@@ -241,3 +241,12 @@ tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--row-color, va
 .lang-seg button:hover { color: var(--sidebar-ink); }
 .lang-seg button.active { background: var(--sidebar-active); color: var(--sidebar-ink); font-weight: 600; }
 :lang(ko) body, body:lang(ko) { word-break: keep-all; }
+
+/* ---------- US daily 10Y ---------- */
+.metric .daily { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; white-space: nowrap; }
+td .daily { font-size: 11.5px; color: var(--ink-2); font-weight: 400; margin-top: 2px; }
+.daily-figs { display: flex; flex-wrap: wrap; gap: 16px 48px; }
+.daily-figs .label { font-size: 12px; color: var(--muted); }
+.daily-figs .big { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+.daily-figs .muted-big { color: var(--ink-2); }
+.daily-figs .delta { font-size: 12.5px; color: var(--ink-2); }
