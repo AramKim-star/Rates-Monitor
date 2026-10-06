@@ -107,7 +107,7 @@ button { font: inherit; color: inherit; }
 .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--sidebar-muted); padding: 22px 10px 6px; opacity: .8; }
 .regions .count { margin-left: auto; font-size: 12px; opacity: .7; }
 
-.sidebar-foot { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 8px 4px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12.5px; }
+.sidebar-foot { display: flex; align-items: center; gap: 10px; padding: 12px 8px 4px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12.5px; }
 .sidebar-foot .muted { color: var(--sidebar-muted); font-size: 12px; }
 .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #888; flex: none; }
 .status-dot.ok { background: #3cc06c; }
@@ -231,3 +231,12 @@ tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--row-color, va
 .sources a { color: var(--ink); }
 .sources td { white-space: normal; vertical-align: top; }
 .seg-sources { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+
+/* ---------- language switch (bottom of sidebar) ---------- */
+.lang-switch { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 10px 10px 12px; color: var(--sidebar-muted); font-size: 12.5px; }
+.lang-switch .lang-label { flex: 1; }
+.lang-seg { display: inline-flex; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 3px; gap: 2px; }
+.lang-seg button { border: 0; background: none; color: var(--sidebar-muted); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.lang-seg button:hover { color: var(--sidebar-ink); }
+.lang-seg button.active { background: var(--sidebar-active); color: var(--sidebar-ink); font-weight: 600; }
+:lang(ko) body, body:lang(ko) { word-break: keep-all; }

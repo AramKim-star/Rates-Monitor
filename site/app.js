@@ -8,18 +8,12 @@
   const DAY = 86400000;
 
   const METRICS = {
-    policy: { label: 'Base rate', long: 'Central bank policy rate', stepped: true },
-    yield10y: { label: '10Y yield', long: '10-year government bond yield (monthly avg.)', stepped: false },
-    cap: { label: 'Cap rate', long: 'Cap rate / prime yield (headline segment)', stepped: false },
+    policy: { stepped: true },
+    yield10y: { stepped: false },
+    cap: { stepped: false },
   };
   const RANGES = { '1Y': 1, '5Y': 5, '10Y': 10, Max: null };
-  const ROUTES = {
-    dashboard: { title: 'Dashboard', sub: 'Base rates, 10-year yields and cap rates at a glance' },
-    policy: { title: 'Base Rates', sub: 'Central bank policy rates · source: BIS' },
-    yields: { title: 'Interest Rates', sub: '10-year government bond yields · source: OECD via FRED' },
-    caps: { title: 'Cap Rates', sub: 'Commercial real estate cap rates & prime yields · broker surveys' },
-    sources: { title: 'Sources', sub: 'Where every number on this site comes from' },
-  };
+  const ROUTES = { dashboard: {}, policy: {}, yields: {}, caps: {}, sources: {} };
 
   const state = {
     route: 'dashboard',
@@ -28,6 +22,7 @@
     range: load('range', '5Y'),
     selected: [],
     slots: {}, // marketId -> colour slot index; follows the entity, never its rank
+    lang: initialLang(),
   };
   let rates = null;
   let caps = null;
@@ -37,6 +32,28 @@
 
   // ---------- utils ----------
   function load(k, d) { try { return localStorage.getItem('rm.' + k) || d; } catch { return d; } }
+  function initialLang() {
+    const q = new URLSearchParams(location.search).get('lang');
+    if (q === 'ko' || q === 'en') return q;
+    const saved = load('lang', '');
+    return saved === 'ko' ? 'ko' : 'en';
+  }
+
+  // ---------- i18n (strings live in i18n.js) ----------
+  const dict = () => window.I18N[state.lang] || window.I18N.en;
+  /** Translate a key, filling {placeholders} from vars (values are inserted as-is). */
+  function t(key, vars) {
+    let str = dict()[key] ?? window.I18N.en[key] ?? key;
+    if (vars) str = str.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+    return str;
+  }
+  const locale = () => (state.lang === 'ko' ? 'ko-KR' : undefined);
+  const mName = (m) => (state.lang === 'ko' && dict().markets?.[m.id]?.name) || m.name;
+  const mBank = (m) => (state.lang === 'ko' && dict().markets?.[m.id]?.bank) || m.bank;
+  const rName = (r) => (state.lang === 'ko' && dict().regions?.[r.id]) || r.name;
+  const secName = (sec) => (state.lang === 'ko' && dict().sectors?.[sec.id]) || sec.name;
+  /** Field of a curated record, preferring its `<field>_ko` variant in Korean. */
+  const L = (obj, field) => (state.lang === 'ko' && obj[field + '_ko']) || obj[field];
   function save(k, v) { try { localStorage.setItem('rm.' + k, v); } catch { /* storage unavailable */ } }
   const $ = (sel) => document.querySelector(sel);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -60,19 +77,19 @@
   function fmtDate(d, monthly = false) {
     if (!d) return '—';
     const opts = monthly ? { month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short', year: 'numeric' };
-    return new Date(ts(d)).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
+    return new Date(ts(d)).toLocaleDateString(locale(), { ...opts, timeZone: 'UTC' });
   }
   /** Badge for a series whose latest observation is old (source publishing lag). */
   function lagBadge(date) {
     const days = (Date.now() - ts(date)) / DAY;
-    return days > 120 ? ` <span class="badge warn" title="Latest observation is ${Math.round(days / 30)} months old; the source has not published newer data">lagging</span>` : '';
+    return days > 120 ? ` <span class="badge warn" title="${esc(t('badge.lagging.title', { n: Math.round(days / 30) }))}">${t('badge.lagging')}</span>` : '';
   }
   function relTime(isoStr) {
     const mins = Math.round((Date.now() - Date.parse(isoStr)) / 60000);
-    if (mins < 60) return `${Math.max(mins, 0)} min ago`;
+    if (mins < 60) return t('rel.min', { n: Math.max(mins, 0) });
     const h = Math.round(mins / 60);
-    if (h < 48) return `${h} h ago`;
-    return `${Math.round(h / 24)} days ago`;
+    if (h < 48) return t('rel.h', { n: h });
+    return t('rel.d', { n: Math.round(h / 24) });
   }
 
   /** Value in force on `t` (last observation at or before t). */
@@ -150,46 +167,54 @@
 
   // ---------- chrome ----------
   function renderNav() {
+    document.documentElement.lang = state.lang;
+    document.title = t('app.title');
+    document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      el.title = t(el.dataset.i18nTitle); el.setAttribute('aria-label', t(el.dataset.i18nTitle));
+    });
+    document.querySelectorAll('[data-lang]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.lang === state.lang);
+      b.setAttribute('aria-pressed', b.dataset.lang === state.lang);
+    });
     document.querySelectorAll('.nav a[data-route]').forEach((a) => {
       a.classList.toggle('active', a.dataset.route === state.route);
       a.setAttribute('aria-current', a.dataset.route === state.route ? 'page' : 'false');
     });
     const counts = {};
     markets().forEach((m) => { counts[m.region] = (counts[m.region] || 0) + 1; });
-    const items = [{ id: 'all', name: 'All regions', n: markets().length }]
-      .concat(regions().map((r) => ({ id: r.id, name: r.name, n: counts[r.id] || 0 })));
+    const items = [{ id: 'all', name: t('region.all'), n: markets().length }]
+      .concat(regions().map((r) => ({ id: r.id, name: rName(r), n: counts[r.id] || 0 })));
     $('#region-nav').innerHTML = items.map((r) => `
       <button data-region="${r.id}" class="${state.region === r.id ? 'active' : ''}">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>
         ${esc(r.name)}<span class="count">${r.n}</span>
       </button>`).join('');
-    const r = ROUTES[state.route];
-    $('#page-title').textContent = r.title;
-    const regionName = state.region === 'all' ? 'All regions' : regions().find((x) => x.id === state.region)?.name;
-    $('#page-sub').textContent = `${regionName || ''} · ${r.sub}`;
+    $('#page-title').textContent = t(`route.${state.route}.title`);
+    const reg = regions().find((x) => x.id === state.region);
+    const regionName = state.region === 'all' ? t('region.all') : reg ? rName(reg) : '';
+    $('#page-sub').textContent = `${regionName} · ${t(`route.${state.route}.sub`)}`;
   }
 
   function renderStatus() {
     const dot = $('#status-dot');
     if (!rates) {
       dot.className = 'status-dot err';
-      $('#status-title').textContent = 'No data yet';
+      $('#status-title').textContent = t('status.nodata');
       $('#status-sub').textContent = loadError || '';
       return;
     }
     const stale = Object.values(rates.series).some((s) => Object.values(s).some((x) => x.stale));
     const old = Date.now() - Date.parse(rates.generatedAt) > 2 * DAY;
     dot.className = 'status-dot ' + (stale || old ? 'warn' : 'ok');
-    $('#status-title').textContent = `Updated ${relTime(rates.generatedAt)}`;
-    $('#status-sub').textContent = stale ? 'Some sources stale' : 'Refreshes daily';
+    $('#status-title').textContent = t('status.updated', { t: relTime(rates.generatedAt) });
+    $('#status-sub').textContent = stale ? t('status.stale') : t('status.daily');
   }
 
   // ---------- views ----------
   function banner() {
     if (rates) return '';
-    return `<div class="banner warn"><b>Live rate data hasn't been generated yet.</b><br>
-      Run the <code>Update rates data</code> GitHub Action (or <code>node scripts/fetch-rates.mjs</code> locally)
-      to fetch central bank rates and bond yields. ${loadError ? `<span class="muted">(${esc(loadError)})</span>` : ''}</div>`;
+    return `<div class="banner warn">${t('banner')} ${loadError ? `<span class="muted">(${esc(loadError)})</span>` : ''}</div>`;
   }
 
   function marketCard(m) {
@@ -198,36 +223,38 @@
     const c = caps?.markets?.[m.id];
     const capSeg = c ? c.segments.find((s) => s.name === c.headline) || c.segments[0] : null;
     const sel = state.selected.includes(m.id);
-    const stale = (p?.meta?.stale || y?.meta?.stale) ? '<span class="badge warn" title="Latest refresh failed; showing last good data">stale</span>' : '';
+    const stale = (p?.meta?.stale || y?.meta?.stale) ? `<span class="badge warn" title="${esc(t('badge.stale.title'))}">${t('badge.stale')}</span>` : '';
+    const na = t('card.na');
+    const oneY = ` <span class="muted">${t('card.1y')}</span>`;
     return `
       <article class="card market-card ${sel ? 'selected' : ''}" data-market="${m.id}" tabindex="0" role="button" aria-pressed="${sel}"${sel ? ` style="outline-color:${slotColor(m.id)}"` : ''}>
         <div class="head">
           <div>
-            <div class="name">${esc(m.name)}</div>
-            <div class="sub">${esc(m.bank)}</div>
+            <div class="name">${esc(mName(m))}</div>
+            <div class="sub">${esc(mBank(m))}</div>
           </div>
-          ${stale || `<span class="badge">${esc(regions().find((r) => r.id === m.region)?.name || '')}</span>`}
+          ${stale || `<span class="badge">${esc(rName(regions().find((r) => r.id === m.region) || { name: '' }))}</span>`}
         </div>
         <div class="metrics">
           <div class="metric">
-            <div class="label">Base rate</div>
-            <div class="value ${p ? '' : 'na'}">${p ? fmtPct(p.value) : 'n/a'}</div>
-            <div class="delta">${p ? deltaHtml(p.d1y, ' <span class="muted">1y</span>') : ''}</div>
+            <div class="label">${t('card.base')}</div>
+            <div class="value ${p ? '' : 'na'}">${p ? fmtPct(p.value) : na}</div>
+            <div class="delta">${p ? deltaHtml(p.d1y, oneY) : ''}</div>
           </div>
           <div class="metric">
-            <div class="label">10Y yield</div>
-            <div class="value ${y ? '' : 'na'}">${y ? fmtPct(y.value) : 'n/a'}</div>
-            <div class="delta">${y ? deltaHtml(y.d1y, ' <span class="muted">1y</span>') : ''}</div>
+            <div class="label">${t('card.y10')}</div>
+            <div class="value ${y ? '' : 'na'}">${y ? fmtPct(y.value) : na}</div>
+            <div class="delta">${y ? deltaHtml(y.d1y, oneY) : ''}</div>
           </div>
           <div class="metric">
-            <div class="label">Cap rate</div>
-            <div class="value ${capSeg ? '' : 'na'}">${capSeg ? (c.approximate ? '≈' : '') + fmtPct(capSeg.value) : 'n/a'}</div>
-            <div class="delta muted" title="${capSeg ? esc(capSeg.name) : ''}">${capSeg ? esc(shorten(capSeg.name, 16)) : ''}</div>
+            <div class="label">${t('card.cap')}</div>
+            <div class="value ${capSeg ? '' : 'na'}">${capSeg ? (c.approximate ? '≈' : '') + fmtPct(capSeg.value) : na}</div>
+            <div class="delta muted" title="${capSeg ? esc(L(capSeg, 'name')) : ''}">${capSeg ? esc(shorten(L(capSeg, 'name'), 16)) : ''}</div>
           </div>
         </div>
         <div class="sub">
-          ${p?.lastMove ? `Last move ${fmtBp(p.lastMove.delta)} on ${fmtDate(p.lastMove.date)}` : p ? 'No change in history window' : 'Policy rate unavailable'}
-          ${y ? ` · 10Y as of ${fmtDate(y.date, true)}${lagBadge(y.date)}` : ''}
+          ${p?.lastMove ? t('card.lastMove', { bp: fmtBp(p.lastMove.delta), date: fmtDate(p.lastMove.date) }) : p ? t('card.noChange') : t('card.policyNA')}
+          ${y ? ` · ${t('card.y10asof', { date: fmtDate(y.date, true) })}${lagBadge(y.date)}` : ''}
         </div>
       </article>`;
   }
@@ -239,37 +266,37 @@
       <section class="card section" id="timeline">
         <div class="section-head">
           <div>
-            <h3>${pickMetric ? 'Timeline' : esc(METRICS[metric].label) + ' over time'}</h3>
-            <div class="sub">${esc(METRICS[metric].long)} · select up to ${MAX_SERIES} markets</div>
+            <h3>${pickMetric ? t('tl.timeline') : t('tl.overTime', { label: t(`metric.${metric}.label`) })}</h3>
+            <div class="sub">${t(`metric.${metric}.long`)} · ${t('tl.selectUpTo', { n: MAX_SERIES })}</div>
           </div>
           <div class="controls">
-            ${pickMetric ? `<div class="seg" role="group" aria-label="Metric">${Object.entries(METRICS).map(([k, v]) =>
-              `<button data-metric="${k}" class="${k === metric ? 'active' : ''}">${v.label}</button>`).join('')}</div>` : ''}
+            ${pickMetric ? `<div class="seg" role="group" aria-label="Metric">${Object.keys(METRICS).map((k) =>
+              `<button data-metric="${k}" class="${k === metric ? 'active' : ''}">${t(`metric.${k}.label`)}</button>`).join('')}</div>` : ''}
             <div class="seg" role="group" aria-label="Time range">${Object.keys(RANGES).map((k) =>
-              `<button data-range="${k}" class="${k === state.range ? 'active' : ''}">${k}</button>`).join('')}</div>
+              `<button data-range="${k}" class="${k === state.range ? 'active' : ''}">${t('range.' + k)}</button>`).join('')}</div>
           </div>
         </div>
         <div class="chips" role="group" aria-label="Markets">
           ${avail.map((m) => {
             const has = !!seriesPoints(metric, m.id);
             const on = state.selected.includes(m.id);
-            return `<button class="chip ${on ? 'on' : ''}" data-chip="${m.id}" ${has ? '' : 'disabled title="No data for this metric"'} aria-pressed="${on}">
-              <span class="sw" style="background:${on ? slotColor(m.id) : 'var(--axis)'}"></span>${esc(m.name)}</button>`;
+            return `<button class="chip ${on ? 'on' : ''}" data-chip="${m.id}" ${has ? '' : `disabled title="${esc(t('tl.noData'))}"`} aria-pressed="${on}">
+              <span class="sw" style="background:${on ? slotColor(m.id) : 'var(--axis)'}"></span>${esc(mName(m))}</button>`;
           }).join('')}
         </div>
-        <div class="chart-wrap"><canvas id="chart" aria-label="${esc(METRICS[metric].long)} timeline" role="img"></canvas><div class="chart-empty" id="chart-empty" hidden></div></div>
+        <div class="chart-wrap"><canvas id="chart" aria-label="${esc(t(`metric.${metric}.long`))}" role="img"></canvas><div class="chart-empty" id="chart-empty" hidden></div></div>
         <div class="legend" id="legend"></div>
-        ${metric === 'cap' ? '<div class="sub" style="margin-top:8px">Cap rate history is built from survey releases (quarterly/semi-annual), so lines are sparse. Methodologies differ by source.</div>' : ''}
+        ${metric === 'cap' ? `<div class="sub" style="margin-top:8px">${t('tl.capNote')}</div>` : ''}
       </section>`;
   }
 
   function viewDashboard() {
     const ms = marketsInRegion();
-    const gen = rates ? `Data refreshed ${relTime(rates.generatedAt)} · ${new Date(rates.generatedAt).toLocaleString()}` : '';
+    const gen = rates ? t('dash.refreshed', { rel: relTime(rates.generatedAt), abs: new Date(rates.generatedAt).toLocaleString(locale()) }) : '';
     return `${banner()}
       <div class="hello">
-        <h2>Global rates at a glance</h2>
-        <div class="tag">#baserates #10yyields #caprates ${gen ? '· ' + esc(gen) : ''}</div>
+        <h2>${t('dash.hello')}</h2>
+        <div class="tag">${t('dash.tags')} ${gen ? '· ' + esc(gen) : ''}</div>
       </div>
       <div class="grid">${ms.map(marketCard).join('')}</div>
       ${timelineSection(state.metric, { pickMetric: true })}`;
@@ -281,7 +308,7 @@
     for (const r of regions()) {
       const inR = ms.filter((m) => m.region === r.id);
       if (!inR.length) continue;
-      if (state.region === 'all') out.push(`<tr class="region-row"><td colspan="${cols}">${esc(r.name)}</td></tr>`);
+      if (state.region === 'all') out.push(`<tr class="region-row"><td colspan="${cols}">${esc(rName(r))}</td></tr>`);
       inR.forEach((m) => out.push(rowFn(m)));
     }
     return out.join('');
@@ -292,8 +319,8 @@
       const p = rates && summary('policy', m.id);
       const y = rates && summary('yield10y', m.id);
       return `<tr data-row="${m.id}" class="${state.selected.includes(m.id) ? 'selected' : ''}" style="--row-color:${slotColor(m.id)}">
-        <td><b>${esc(m.name)}</b>${p?.meta?.stale ? ' <span class="badge warn">stale</span>' : ''}</td>
-        <td>${esc(m.bank)}</td>
+        <td><b>${esc(mName(m))}</b>${p?.meta?.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td>
+        <td>${esc(mBank(m))}</td>
         <td class="num"><b>${p ? fmtPct(p.value) : '—'}</b></td>
         <td class="num">${p?.lastMove ? deltaHtml(p.lastMove.delta) : '—'}</td>
         <td>${p?.lastMove ? fmtDate(p.lastMove.date) : '—'}</td>
@@ -305,9 +332,9 @@
     return `${banner()}
       ${timelineSection('policy')}
       <section class="card section">
-        <div class="section-head"><h3>Current base rates</h3><span class="source">Source: <a href="https://data.bis.org/topics/CBPOL" target="_blank" rel="noopener">BIS central bank policy rates</a></span></div>
+        <div class="section-head"><h3>${t('policy.current')}</h3><span class="source">${t('policy.source')}</span></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Market</th><th>Central bank</th><th class="num">Rate</th><th class="num">Last move</th><th>Move date</th><th class="num">1Y change</th><th class="num">10Y − base</th><th>As of</th></tr></thead>
+          <thead><tr><th>${t('th.market')}</th><th>${t('th.bank')}</th><th class="num">${t('th.rate')}</th><th class="num">${t('th.lastMove')}</th><th>${t('th.moveDate')}</th><th class="num">${t('th.chg1y')}</th><th class="num">${t('th.y10MinusBase')}</th><th>${t('th.asOf')}</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>
       </section>`;
@@ -320,22 +347,22 @@
       const c = caps?.markets?.[m.id];
       const capSeg = c ? c.segments.find((s) => s.name === c.headline) : null;
       return `<tr data-row="${m.id}" class="${state.selected.includes(m.id) ? 'selected' : ''}" style="--row-color:${slotColor(m.id)}">
-        <td><b>${esc(m.name)}</b>${y?.meta?.stale ? ' <span class="badge warn">stale</span>' : ''}</td>
+        <td><b>${esc(mName(m))}</b>${y?.meta?.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td>
         <td class="num"><b>${y ? fmtPct(y.value) : '—'}</b></td>
         <td class="num">${y ? deltaHtml(y.dPrev) : '—'}</td>
         <td class="num">${y ? deltaHtml(y.d1y) : '—'}</td>
         <td class="num">${p ? fmtPct(p.value) : '—'}</td>
         <td class="num">${p && y ? fmtBp(y.value - p.value) : '—'}</td>
         <td class="num">${capSeg && y ? fmtBp(capSeg.value - y.value) : '—'}</td>
-        <td class="muted">${y ? fmtDate(y.date, true) + lagBadge(y.date) : 'not covered'}</td>
+        <td class="muted">${y ? fmtDate(y.date, true) + lagBadge(y.date) : t('notCovered')}</td>
       </tr>`;
     }, 8);
     return `${banner()}
       ${timelineSection('yield10y')}
       <section class="card section">
-        <div class="section-head"><h3>10-year government bond yields</h3><span class="source">Source: OECD Main Economic Indicators via <a href="https://fred.stlouisfed.org/" target="_blank" rel="noopener">FRED</a> · monthly averages</span></div>
+        <div class="section-head"><h3>${t('yields.title')}</h3><span class="source">${t('yields.source')}</span></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Market</th><th class="num">10Y yield</th><th class="num">1M change</th><th class="num">1Y change</th><th class="num">Base rate</th><th class="num">Curve (10Y − base)</th><th class="num">Cap rate − 10Y</th><th>Month</th></tr></thead>
+          <thead><tr><th>${t('th.market')}</th><th class="num">${t('th.y10')}</th><th class="num">${t('th.chg1m')}</th><th class="num">${t('th.chg1y')}</th><th class="num">${t('th.base')}</th><th class="num">${t('th.curve')}</th><th class="num">${t('th.capMinus10y')}</th><th>${t('th.month')}</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>
       </section>`;
@@ -355,7 +382,7 @@
     const maxVal = Math.max(8, ...withCaps.flatMap((m) => caps.markets[m.id].segments.map((s) => (s.range ? s.range[1] : s.value))));
     const segRow = (s, c, label) => `
       <div class="segrow">
-        <span>${esc(label)}${s.name !== label ? ` <span class="seg-detail">${esc(s.name)}</span>` : ''}</span>
+        <span>${esc(label)}${L(s, 'name') !== label ? ` <span class="seg-detail">${esc(L(s, 'name'))}</span>` : ''}</span>
         <b>${fmtSeg(s, c.approximate)}</b>
         <div class="bar"><div style="width:${((s.range ? s.range[1] : s.value) / maxVal * 100).toFixed(1)}%"></div></div>
       </div>`;
@@ -365,29 +392,27 @@
       const head = c.segments.find((s) => s.name === c.headline) || c.segments[0];
       const sel = state.selected.includes(m.id);
       const all = c.segments.filter((s) => s.sector === 'all');
-      const rows = all.map((s) => segRow(s, c, 'All property')).join('') + sectors.map((sec) => {
+      const rows = all.map((s) => segRow(s, c, t('caps.allProperty'))).join('') + sectors.map((sec) => {
         const segs = c.segments.filter((s) => s.sector === sec.id);
-        if (!segs.length) return `<div class="segrow missing"><span>${esc(sec.name)}</span><span class="muted">Not covered</span></div>`;
-        return segs.map((s) => segRow(s, c, sec.name)).join('');
+        if (!segs.length) return `<div class="segrow missing"><span>${esc(secName(sec))}</span><span class="muted">${t('caps.notCovered')}</span></div>`;
+        return segs.map((s) => segRow(s, c, secName(sec))).join('');
       }).join('');
       return `<article class="card market-card ${sel ? 'selected' : ''}" data-market="${m.id}" tabindex="0" role="button" aria-pressed="${sel}"${sel ? ` style="outline-color:${slotColor(m.id)}"` : ''}>
         <div class="head">
-          <div><div class="name">${esc(m.name)}</div><div class="sub">${esc(c.measure)} · ${esc(c.scope)}</div></div>
+          <div><div class="name">${esc(mName(m))}</div><div class="sub">${esc(L(c, 'measure'))} · ${esc(L(c, 'scope'))}</div></div>
           <span class="badge">${fmtDate(c.asOf, true)}</span>
         </div>
-        <div><span class="badge basis-${esc(c.basis)}">${c.basis === 'prime' ? 'Prime yield' : 'Average cap rate'}</span>${c.approximate ? ' <span class="badge warn" title="Rounded figures from coverage of the report">approx.</span>' : ''}</div>
+        <div><span class="badge basis-${esc(c.basis)}">${t('basis.' + (c.basis === 'prime' ? 'prime' : 'average'))}</span>${c.approximate ? ` <span class="badge warn" title="${esc(t('badge.approx.title'))}">${t('badge.approx')}</span>` : ''}</div>
         <div class="segments">${rows}</div>
-        ${y ? `<div class="sub">${esc(head.name)} spread over 10Y yield: <b style="color:var(--ink)">${fmtBp(head.value - y.value)}</b> <span class="muted">(10Y ${fmtPct(y.value)}, ${fmtDate(y.date, true)})</span></div>` : ''}
-        ${c.note ? `<div class="sub">${esc(c.note)}</div>` : ''}
-        <div class="source">Source: <a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">${esc(c.source)}</a> · <a href="#/sources">all sources</a></div>
+        ${y ? `<div class="sub">${t('caps.spread', { name: esc(L(head, 'name')), bp: fmtBp(head.value - y.value), y: fmtPct(y.value), date: fmtDate(y.date, true) })}</div>` : ''}
+        ${c.note ? `<div class="sub">${esc(L(c, 'note'))}</div>` : ''}
+        <div class="source">${t('caps.source')} <a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">${esc(c.source)}</a> · <a href="#/sources">${t('caps.allSources')}</a></div>
       </article>`;
     }).join('');
     return `${banner()}
-      <div class="note">Cap rates come only from named broker research reports; there is no free live feed. Every card shows the same four sectors, and a sector
-        the report doesn't cover is marked <b>Not covered</b> rather than filled from weaker sources. <b>Prime</b> yields (best-in-class assets) run lower than
-        <b>average</b> cap rates, so compare across markets with care. Last reviewed ${esc(caps?.updated || '—')} · <a href="#/sources">full source list</a>.</div>
-      <div class="grid section">${cards || '<div class="card">No cap rate readings for this region yet.</div>'}</div>
-      ${without.length ? `<div class="sub section">No cap rate survey loaded for: ${without.map((m) => esc(m.name)).join(', ')}.</div>` : ''}
+      <div class="note">${t('caps.note', { date: esc(fmtDate(caps?.updated)) })}</div>
+      <div class="grid section">${cards || `<div class="card">${t('caps.none')}</div>`}</div>
+      ${without.length ? `<div class="sub section">${t('caps.noneFor', { list: without.map((m) => esc(mName(m))).join(', ') })}</div>` : ''}
       ${timelineSection('cap')}`;
   }
 
@@ -396,55 +421,51 @@
     const link = (url, text) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
     const policyRows = ms.map((m) => {
       const s = rates?.series?.policy?.[m.id];
-      return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.bank || '')}</td>
-        <td>${s?.seriesId ? `<code>${esc(s.seriesId)}</code>` : 'WS_CBPOL (daily)'}</td>
-        <td>${s ? fmtDate(s.lastObservation) + lagBadge(s.lastObservation) : '<span class="muted">not available</span>'}${s?.stale ? ' <span class="badge warn">stale</span>' : ''}</td></tr>`;
+      return `<tr><td><b>${esc(mName(m))}</b></td><td>${esc(mBank(m) || '')}</td>
+        <td>${s?.seriesId ? `<code>${esc(s.seriesId)}</code>` : t('src.policy.daily')}</td>
+        <td>${s ? fmtDate(s.lastObservation) + lagBadge(s.lastObservation) : `<span class="muted">${t('src.notAvail')}</span>`}${s?.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td></tr>`;
     }).join('');
     const yieldRows = ms.map((m) => {
       const s = rates?.series?.yield10y?.[m.id];
-      if (!s) return `<tr><td><b>${esc(m.name)}</b></td><td colspan="3" class="muted">Not covered: no free series with a reliable official source</td></tr>`;
+      if (!s) return `<tr><td><b>${esc(mName(m))}</b></td><td colspan="3" class="muted">${t('src.y.notCovered')}</td></tr>`;
       const id = s.seriesId || (s.sourceUrl || '').split('/').pop();
-      return `<tr><td><b>${esc(m.name)}</b></td><td>${link(s.sourceUrl, id)}</td><td>${esc(s.frequency)}</td>
-        <td>${fmtDate(s.lastObservation, true)}${lagBadge(s.lastObservation)}${s.stale ? ' <span class="badge warn">stale</span>' : ''}</td></tr>`;
+      return `<tr><td><b>${esc(mName(m))}</b></td><td>${link(s.sourceUrl, id)}</td><td>${s.frequency === 'monthly average' ? t('freq.monthly') : esc(s.frequency)}</td>
+        <td>${fmtDate(s.lastObservation, true)}${lagBadge(s.lastObservation)}${s.stale ? ` <span class="badge warn">${t('badge.stale')}</span>` : ''}</td></tr>`;
     }).join('');
     const capRows = ms.map((m) => {
       const c = caps?.markets?.[m.id];
-      if (!c) return `<tr><td><b>${esc(m.name)}</b></td><td colspan="5" class="muted">Not covered</td></tr>`;
+      if (!c) return `<tr><td><b>${esc(mName(m))}</b></td><td colspan="5" class="muted">${t('caps.notCovered')}</td></tr>`;
       const extra = [...new Map(c.segments.filter((s) => s.source).map((s) => [s.sourceUrl, s])).values()];
-      return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(c.publisher)}</td>
-        <td>${link(c.sourceUrl, c.source)}${extra.length ? `<div class="seg-sources">${extra.map((s) => `${link(s.sourceUrl, s.source)}: ${esc(c.segments.filter((x) => x.sourceUrl === s.sourceUrl).map((x) => x.name).join(', '))}`).join('<br>')}</div>` : ''}</td>
-        <td>${c.basis === 'prime' ? 'Prime yield' : 'Average cap rate'}<div class="muted">${esc(c.scope)}</div></td>
+      return `<tr><td><b>${esc(mName(m))}</b></td><td>${esc(c.publisher)}</td>
+        <td>${link(c.sourceUrl, c.source)}${extra.length ? `<div class="seg-sources">${extra.map((s) => `${link(s.sourceUrl, s.source)}: ${esc(c.segments.filter((x) => x.sourceUrl === s.sourceUrl).map((x) => L(x, 'name')).join(', '))}`).join('<br>')}</div>` : ''}</td>
+        <td>${t('basis.' + (c.basis === 'prime' ? 'prime' : 'average'))}<div class="muted">${esc(L(c, 'scope'))}</div></td>
         <td>${fmtDate(c.asOf, true)}</td>
-        <td>${c.approximate ? '<span class="badge warn">approx.</span> ' : ''}${esc(c.note || '')}</td></tr>`;
+        <td>${c.approximate ? `<span class="badge warn">${t('badge.approx')}</span> ` : ''}${esc(L(c, 'note') || '')}</td></tr>`;
     }).join('');
+    const th = (...keys) => `<thead><tr>${keys.map((k) => `<th>${t('th.' + k)}</th>`).join('')}</tr></thead>`;
     return `${banner()}
       <section class="card section sources">
-        <h3>Base rates: central bank policy rates</h3>
-        <p>${link('https://data.bis.org/topics/CBPOL', 'Bank for International Settlements (BIS): Central bank policy rates, dataset WS_CBPOL')}.
-          BIS collects the official policy rate from each central bank and publishes it daily. Fetched automatically twice a day via the
-          ${link('https://stats.bis.org/api-doc/v1/', 'BIS statistics API')}. The latest observation can lag the central bank's announcement by a few days.</p>
-        <div class="table-wrap"><table><thead><tr><th>Market</th><th>Central bank</th><th>BIS series</th><th>Latest observation</th></tr></thead><tbody>${policyRows}</tbody></table></div>
+        <h3>${t('src.policy.h')}</h3>
+        <p>${t('src.policy.p')}</p>
+        <div class="table-wrap"><table>${th('market', 'bank', 'bisSeries', 'latestObs')}<tbody>${policyRows}</tbody></table></div>
       </section>
       <section class="card section sources">
-        <h3>Interest rates: 10-year government bond yields</h3>
-        <p>${link('https://www.oecd.org/en/data/indicators/long-term-interest-rates.html', 'OECD Main Economic Indicators: long-term interest rates')}
-          (10-year government bond yields, monthly averages), retrieved from ${link('https://fred.stlouisfed.org/', 'FRED, Federal Reserve Bank of St. Louis')},
-          which republishes the OECD series. Fetched automatically twice a day; new months appear once the OECD publishes them, typically 1–2 months after month-end.</p>
-        <div class="table-wrap"><table><thead><tr><th>Market</th><th>FRED series</th><th>Frequency</th><th>Latest month</th></tr></thead><tbody>${yieldRows}</tbody></table></div>
+        <h3>${t('src.y.h')}</h3>
+        <p>${t('src.y.p')}</p>
+        <div class="table-wrap"><table>${th('market', 'fredSeries', 'freq', 'latestMonth')}<tbody>${yieldRows}</tbody></table></div>
       </section>
       <section class="card section sources">
-        <h3>Cap rates: commercial real estate yields</h3>
-        <p>Taken by hand from broker research reports; no free live feed exists. Only figures traceable to a named report are shown. Sectors a report doesn't cover are left blank.
-          Last reviewed ${esc(caps?.updated || '—')}.</p>
-        <div class="table-wrap"><table><thead><tr><th>Market</th><th>Publisher</th><th>Report</th><th>Basis</th><th>As of</th><th>Notes</th></tr></thead><tbody>${capRows}</tbody></table></div>
+        <h3>${t('src.cap.h')}</h3>
+        <p>${t('src.cap.p', { date: esc(fmtDate(caps?.updated)) })}</p>
+        <div class="table-wrap"><table>${th('market', 'publisher', 'report', 'basis', 'asOf', 'notes')}<tbody>${capRows}</tbody></table></div>
       </section>
       <section class="card section sources">
-        <h3>How the data is maintained</h3>
+        <h3>${t('src.maint.h')}</h3>
         <ul>
-          <li>Base rates and 10Y yields are refreshed automatically twice daily by a scheduled GitHub Action, which republishes this site.</li>
-          <li>If a source can't be reached, the last good data is kept and marked <span class="badge warn">stale</span>; nothing is estimated or filled in.</li>
-          <li>Series whose latest observation is more than 4 months old are marked <span class="badge warn">lagging</span>.</li>
-          <li>Cap rates are updated manually when new reports are released (<code>site/data/cap-rates.json</code>).</li>
+          <li>${t('src.maint.li1')}</li>
+          <li>${t('src.maint.li2')}</li>
+          <li>${t('src.maint.li3')}</li>
+          <li>${t('src.maint.li4')}</li>
         </ul>
       </section>`;
   }
@@ -519,7 +540,7 @@
         if (before != null) data.unshift({ x: min, y: before });
       }
       return {
-        label: marketById(id)?.name || id,
+        label: marketById(id) ? mName(marketById(id)) : id,
         data,
         _points: pts,
         borderColor: slotColor(id),
@@ -537,7 +558,7 @@
     $('#legend').innerHTML = datasets.map((d) => `<span><i style="background:${d.borderColor}"></i>${esc(d.label)}</span>`).join('');
     if (!datasets.length) {
       empty.hidden = false;
-      empty.textContent = rates || metric === 'cap' ? 'Select one or more markets above to plot them.' : 'No data loaded yet.';
+      empty.textContent = rates || metric === 'cap' ? t('chart.select') : t('chart.nodata');
       return;
     }
     empty.hidden = true;
@@ -563,7 +584,17 @@
             time: { tooltipFormat: 'PP' },
             grid: { display: false },
             border: { color: css('--axis') },
-            ticks: { color: ink2, maxRotation: 0, autoSkipPadding: 24 },
+            ticks: {
+              color: ink2, maxRotation: 0, autoSkipPadding: 24,
+              // Format tick labels ourselves so they follow the selected language.
+              callback(v) {
+                const unit = this._unit;
+                const opts = unit === 'year' ? { year: 'numeric' }
+                  : unit === 'day' || unit === 'week' ? { month: 'short', day: 'numeric' }
+                  : { month: 'short', year: 'numeric' };
+                return new Date(v).toLocaleDateString(locale(), { ...opts, timeZone: 'UTC' });
+              },
+            },
           },
           y: {
             grid: { color: grid },
@@ -607,23 +638,34 @@
 
   function closeMenu() { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); }
 
+  function setLang(lang) {
+    state.lang = lang; save('lang', lang);
+    // Keep the address bar shareable: ?lang=ko opens the Korean version.
+    const url = new URL(location.href);
+    if (lang === 'ko') url.searchParams.set('lang', 'ko'); else url.searchParams.delete('lang');
+    history.replaceState(null, '', url);
+    render();
+  }
+
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-region],[data-metric],[data-range],[data-chip],[data-market],[data-row]');
-    if (!t) return;
-    if (t.dataset.region) {
-      state.region = t.dataset.region; save('region', state.region);
+    const el = e.target.closest('[data-lang],[data-region],[data-metric],[data-range],[data-chip],[data-market],[data-row]');
+    if (!el) return;
+    if (el.dataset.lang) {
+      setLang(el.dataset.lang);
+    } else if (el.dataset.region) {
+      state.region = el.dataset.region; save('region', state.region);
       resetSelection(currentMetric()); closeMenu(); render();
-    } else if (t.dataset.metric) {
-      state.metric = t.dataset.metric; resetSelection(state.metric); render();
-    } else if (t.dataset.range) {
-      state.range = t.dataset.range; save('range', state.range); render();
+    } else if (el.dataset.metric) {
+      state.metric = el.dataset.metric; resetSelection(state.metric); render();
+    } else if (el.dataset.range) {
+      state.range = el.dataset.range; save('range', state.range); render();
     } else {
-      toggleMarket(t.dataset.chip || t.dataset.market || t.dataset.row);
+      toggleMarket(el.dataset.chip || el.dataset.market || el.dataset.row);
     }
   });
   document.addEventListener('keydown', (e) => {
-    const t = e.target.closest?.('[data-market]');
-    if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleMarket(t.dataset.market); }
+    const el = e.target.closest?.('[data-market]');
+    if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleMarket(el.dataset.market); }
   });
   $('#menu-btn').addEventListener('click', () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); });
   $('#scrim').addEventListener('click', closeMenu);

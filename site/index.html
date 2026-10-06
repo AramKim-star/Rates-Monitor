@@ -16,36 +16,45 @@
           <svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 3 7-8"/></svg>
         </div>
         <div>
-          <div class="brand-name">Global Rates Monitor</div>
-          <div class="brand-sub">real estate rates</div>
+          <div class="brand-name" data-i18n="app.title">Global Rates Monitor</div>
+          <div class="brand-sub" data-i18n="brand.sub">real estate rates</div>
         </div>
       </div>
 
       <nav class="nav" aria-label="Sections">
         <a href="#/dashboard" data-route="dashboard">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-          Dashboard
+          <span data-i18n="nav.dashboard">Dashboard</span>
         </a>
         <a href="#/policy" data-route="policy">
           <svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v9M9.5 10v9M14.5 10v9M19 10v9"/><path d="M3 21h18"/></svg>
-          Base Rates
+          <span data-i18n="nav.policy">Base Rates</span>
         </a>
         <a href="#/yields" data-route="yields">
           <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
-          Interest Rates
+          <span data-i18n="nav.yields">Interest Rates</span>
         </a>
         <a href="#/caps" data-route="caps">
           <svg viewBox="0 0 24 24"><path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6"/></svg>
-          Cap Rates
+          <span data-i18n="nav.caps">Cap Rates</span>
         </a>
         <a href="#/sources" data-route="sources">
           <svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>
-          Sources
+          <span data-i18n="nav.sources">Sources</span>
         </a>
       </nav>
 
-      <div class="nav-section">Regions</div>
+      <div class="nav-section" data-i18n="nav.regions">Regions</div>
       <nav class="nav regions" id="region-nav" aria-label="Regions"></nav>
+
+      <div class="lang-switch">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>
+        <span class="lang-label" data-i18n="lang.label">Language</span>
+        <div class="lang-seg" role="group" aria-label="Language / 언어">
+          <button data-lang="en" lang="en">EN</button>
+          <button data-lang="ko" lang="ko">한국어</button>
+        </div>
+      </div>
 
       <div class="sidebar-foot">
         <div class="status-dot" id="status-dot" aria-hidden="true"></div>
@@ -53,7 +62,7 @@
           <div id="status-title">Loading data…</div>
           <div id="status-sub" class="muted"></div>
         </div>
-        <button class="icon-btn" id="refresh-btn" title="Reload data" aria-label="Reload data">
+        <button class="icon-btn" id="refresh-btn" title="Reload data" aria-label="Reload data" data-i18n-title="refresh.title">
           <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
         </button>
       </div>
@@ -63,7 +72,7 @@
 
     <main class="main">
       <header class="topbar">
-        <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu">
+        <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu" data-i18n-title="menu.open">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
         <div>
@@ -80,6 +89,7 @@
 
   <script src="vendor/chart.umd.min.js"></script>
   <script src="vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

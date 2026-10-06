@@ -34,6 +34,16 @@ market's entry in `site/data/cap-rates.json`: replace `segments` (each tagged wi
 headline reading to `history`. The timeline builds up from those
 entries. Definitions vary (average vs prime yields), and each card names its measure and source.
 
+## Languages (English / 한국어)
+
+The **EN | 한국어** switch at the bottom of the sidebar changes the whole site's language; each visitor's choice is remembered.
+Share `https://aramkim-star.github.io/Rates-Monitor/?lang=ko` to open the Korean version directly.
+
+- All interface text lives in `site/i18n.js` (`en` and `ko` sections). Edit wording there.
+- Korean names for countries, central banks, regions and sectors are also in `site/i18n.js`.
+- Cap rate labels use optional `*_ko` fields in `site/data/cap-rates.json` (`measure_ko`, `scope_ko`, `note_ko`, `name_ko`); when one is missing, the English text is shown.
+- Report titles stay in their original English.
+
 ## Sources
 
 The site's **Sources** page (`#/sources`) lists every source live, including each series' latest observation.
