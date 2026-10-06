@@ -220,3 +220,14 @@ tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--row-color, va
   .chart-wrap { height: 300px; }
   .metric .value { font-size: 18px; }
 }
+
+/* ---------- cap rate sectors & sources ---------- */
+.seg-detail { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.segrow.missing { color: var(--muted); padding-bottom: 6px; border-bottom: 1px dashed var(--card-border); }
+.segrow.missing span:first-child { color: var(--ink-2); }
+.badge.basis-prime { background: var(--chip-active); color: var(--chip-active-ink); }
+.sources h3 { margin: 0 0 6px; font-size: 16px; }
+.sources p, .sources li { color: var(--ink-2); font-size: 13.5px; max-width: 900px; }
+.sources a { color: var(--ink); }
+.sources td { white-space: normal; vertical-align: top; }
+.seg-sources { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; }

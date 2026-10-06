@@ -1,36 +1,49 @@
 {
-  "_comment": "Curated cap rate / prime yield readings. There is no free, licence-clean live API for cap rates: they are published by brokers (CBRE, Knight Frank, Cushman & Wakefield...) in periodic surveys. Update this file when a new survey is released: replace `segments`, bump `asOf`, and append the headline to `history`. Values are in percent. Methodologies differ by source (average vs prime yields), so compare across markets with care.",
+  "_comment": "Curated cap rate / prime yield readings from named broker research reports only. No free live API exists for cap rates. Each segment has a `sector` (office | industrial | retail | residential | all) so cards line up; a sector a survey doesn't cover is shown as 'Not covered' rather than filled from weaker sources. `basis` is 'prime' (best-in-class assets) or 'average'. Set `approximate: true` when a figure was transcribed from coverage of the report rather than the report itself. When a new survey is released: replace `segments`, bump `asOf`, and append the headline value to `history`. Values are in percent.",
   "updated": "2026-10-06",
+  "sectors": [
+    { "id": "office", "name": "Office" },
+    { "id": "industrial", "name": "Industrial / Logistics" },
+    { "id": "retail", "name": "Retail" },
+    { "id": "residential", "name": "Residential / Multifamily" }
+  ],
   "markets": {
     "US": {
-      "measure": "Average cap rate, stabilised assets",
+      "basis": "average",
+      "scope": "United States (national)",
+      "measure": "Average going-in cap rate, stabilised assets",
+      "publisher": "CBRE",
       "source": "CBRE U.S. Cap Rate Survey H1 2026",
       "sourceUrl": "https://www.cbre.com/insights/reports/us-cap-rate-survey-h1-2026",
       "asOf": "2026-06-30",
-      "note": "Figures are approximate, as reported in coverage of the survey. Cap rates held broadly flat vs H2 2025.",
+      "approximate": true,
+      "note": "Figures are rounded values as reported in coverage of the CBRE survey; replace with the exact report figures when available.",
       "headline": "Multifamily",
       "segments": [
-        { "name": "Multifamily", "value": 5.2 },
-        { "name": "Industrial", "value": 5.2 },
-        { "name": "Retail (strip)", "value": 6.4 },
-        { "name": "Office", "value": 7.4 }
+        { "sector": "office", "name": "Office", "value": 7.4 },
+        { "sector": "industrial", "name": "Industrial", "value": 5.2 },
+        { "sector": "retail", "name": "Retail (strip)", "value": 6.4 },
+        { "sector": "residential", "name": "Multifamily", "value": 5.2 }
       ],
       "history": [
         { "date": "2026-06-30", "value": 5.2 }
       ]
     },
     "CA": {
+      "basis": "average",
+      "scope": "Canada (national average of major markets)",
       "measure": "National average cap rate",
+      "publisher": "CBRE",
       "source": "CBRE Canadian Cap Rates & Investment Insights Q2 2026",
       "sourceUrl": "https://www.cbre.ca/insights/reports/canada-cap-rates-investment-insights-q2-2026",
       "asOf": "2026-06-30",
       "headline": "All properties",
       "segments": [
-        { "name": "All properties", "value": 6.58 },
-        { "name": "Multifamily (high-rise A)", "value": 4.53 },
-        { "name": "Industrial (class A)", "value": 5.73 },
-        { "name": "Retail (neighbourhood)", "value": 6.56 },
-        { "name": "Office (downtown A)", "value": 7.78 }
+        { "sector": "all", "name": "All properties", "value": 6.58 },
+        { "sector": "office", "name": "Downtown office, class A", "value": 7.78 },
+        { "sector": "industrial", "name": "Industrial, class A", "value": 5.73 },
+        { "sector": "retail", "name": "Neighbourhood retail", "value": 6.56 },
+        { "sector": "residential", "name": "Multifamily high-rise, class A", "value": 4.53 }
       ],
       "history": [
         { "date": "2026-03-31", "value": 6.61 },
@@ -38,32 +51,45 @@
       ]
     },
     "GB": {
+      "basis": "prime",
+      "scope": "United Kingdom",
       "measure": "Prime yield",
-      "source": "Knight Frank UK Prime Yield Guide (spring 2026)",
-      "sourceUrl": "https://www.knightfrank.co.uk/research",
+      "publisher": "Knight Frank",
+      "source": "Knight Frank UK Prime Yield Guide (March–May 2026 editions)",
+      "sourceUrl": "https://www.knightfrank.co.uk/site-assets/research/report-pdfs/yield-guide/may-2026-prime-yield-guide.pdf",
       "asOf": "2026-05-31",
-      "headline": "Office (City prime)",
+      "headline": "City office, prime",
       "segments": [
-        { "name": "Office (West End core)", "value": 3.75 },
-        { "name": "Office (City prime)", "value": 5.25 },
-        { "name": "Distribution / warehousing", "value": 5.25 },
-        { "name": "Retail (prime towns)", "value": 6.25 }
+        { "sector": "office", "name": "City office, prime", "value": 5.25, "asOf": "2026-04-30",
+          "source": "Knight Frank Prime Yield Guide, April 2026",
+          "sourceUrl": "https://www.knightfrank.co.uk/site-assets/research/report-pdfs/investment-yield-guide/04.-kf-final-april-2026-prime-yield-guide-1.pdf" },
+        { "sector": "office", "name": "West End office, core", "value": 3.75, "asOf": "2026-03-31",
+          "source": "Knight Frank Investment Yield Guide, March 2026",
+          "sourceUrl": "https://content.knightfrank.com/research/522/documents/en/investment-yield-guide-march-2026-12737.pdf" },
+        { "sector": "industrial", "name": "Distribution / warehousing, prime", "value": 5.25, "asOf": "2026-05-31",
+          "source": "Knight Frank Prime Yield Guide, May 2026",
+          "sourceUrl": "https://www.knightfrank.co.uk/site-assets/research/report-pdfs/yield-guide/may-2026-prime-yield-guide.pdf" },
+        { "sector": "retail", "name": "Retail, prime towns", "value": 6.25, "asOf": "2026-03-31",
+          "source": "Knight Frank Investment Yield Guide, March 2026",
+          "sourceUrl": "https://content.knightfrank.com/research/522/documents/en/investment-yield-guide-march-2026-12737.pdf" }
       ],
       "history": [
         { "date": "2026-04-30", "value": 5.25 }
       ]
     },
     "EA": {
+      "basis": "prime",
+      "scope": "All-Europe average (includes non-euro markets)",
       "measure": "All-Europe prime yield",
+      "publisher": "Cushman & Wakefield",
       "source": "Cushman & Wakefield DNA of Real Estate Q2 2026",
       "sourceUrl": "https://www.cushmanwakefield.com/en/united-kingdom/insights/dna-of-real-estate",
       "asOf": "2026-06-30",
-      "note": "Pan-European average (includes non-euro markets).",
       "headline": "Office",
       "segments": [
-        { "name": "Retail (high street)", "value": 4.77 },
-        { "name": "Logistics", "value": 5.23 },
-        { "name": "Office", "value": 5.39 }
+        { "sector": "office", "name": "Office", "value": 5.39 },
+        { "sector": "industrial", "name": "Logistics", "value": 5.23 },
+        { "sector": "retail", "name": "High street retail", "value": 4.77 }
       ],
       "history": [
         { "date": "2026-03-31", "value": 5.36 },
@@ -71,14 +97,17 @@
       ]
     },
     "JP": {
-      "measure": "Expected NOI yield (Tokyo)",
+      "basis": "prime",
+      "scope": "Tokyo",
+      "measure": "Expected NOI yield",
+      "publisher": "CBRE",
       "source": "CBRE Japan Cap Rate Survey, June 2026",
       "sourceUrl": "https://www.cbre.co.jp/en/insights/reports/japan-cap-rate-survey-june-2026",
       "asOf": "2026-06-30",
-      "headline": "Office (Otemachi prime)",
+      "headline": "Office, Otemachi prime",
       "segments": [
-        { "name": "Office (Otemachi prime)", "value": 3.10 },
-        { "name": "Logistics (Tokyo Bay)", "value": 3.65 }
+        { "sector": "office", "name": "Office, Otemachi prime", "value": 3.10 },
+        { "sector": "industrial", "name": "Logistics, Tokyo Bay area", "value": 3.65 }
       ],
       "history": [
         { "date": "2026-03-31", "value": 3.15 },
@@ -86,14 +115,16 @@
       ]
     },
     "AU": {
-      "measure": "Prime yield range (Sydney)",
-      "source": "Knight Frank Sydney Industrial Q2 2026; Sydney CBD office Q1 2026",
+      "basis": "prime",
+      "scope": "Sydney",
+      "measure": "Prime yield range",
+      "publisher": "Knight Frank",
+      "source": "Knight Frank Sydney Industrial State of the Market Q2 2026",
       "sourceUrl": "https://content.knightfrank.com/research/2868/documents/en/sydney-industrial-state-of-the-market-q2-2026-12930.pdf",
       "asOf": "2026-06-30",
-      "headline": "Industrial (Western Sydney)",
+      "headline": "Industrial, Western Sydney prime",
       "segments": [
-        { "name": "Industrial (Western Sydney)", "value": 5.25, "range": [4.75, 5.75] },
-        { "name": "Office (CBD prime, Q1)", "value": 6.125, "range": [5.50, 6.75] }
+        { "sector": "industrial", "name": "Industrial, Western Sydney prime", "value": 5.25, "range": [4.75, 5.75] }
       ],
       "history": [
         { "date": "2026-06-30", "value": 5.25 }

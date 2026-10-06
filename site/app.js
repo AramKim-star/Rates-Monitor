@@ -18,6 +18,7 @@
     policy: { title: 'Base Rates', sub: 'Central bank policy rates · source: BIS' },
     yields: { title: 'Interest Rates', sub: '10-year government bond yields · source: OECD via FRED' },
     caps: { title: 'Cap Rates', sub: 'Commercial real estate cap rates & prime yields · broker surveys' },
+    sources: { title: 'Sources', sub: 'Where every number on this site comes from' },
   };
 
   const state = {
@@ -220,7 +221,7 @@
           </div>
           <div class="metric">
             <div class="label">Cap rate</div>
-            <div class="value ${capSeg ? '' : 'na'}">${capSeg ? fmtPct(capSeg.value) : 'n/a'}</div>
+            <div class="value ${capSeg ? '' : 'na'}">${capSeg ? (c.approximate ? '≈' : '') + fmtPct(capSeg.value) : 'n/a'}</div>
             <div class="delta muted" title="${capSeg ? esc(capSeg.name) : ''}">${capSeg ? esc(shorten(capSeg.name, 16)) : ''}</div>
           </div>
         </div>
@@ -340,40 +341,112 @@
       </section>`;
   }
 
+  const DEFAULT_SECTORS = [
+    { id: 'office', name: 'Office' }, { id: 'industrial', name: 'Industrial / Logistics' },
+    { id: 'retail', name: 'Retail' }, { id: 'residential', name: 'Residential / Multifamily' },
+  ];
+  const fmtSeg = (s, approx) => (s.range ? `${s.range[0].toFixed(2)}–${s.range[1].toFixed(2)}%` : (approx ? '≈ ' : '') + fmtPct(s.value));
+
   function viewCaps() {
     const ms = marketsInRegion();
+    const sectors = caps?.sectors || DEFAULT_SECTORS;
     const withCaps = ms.filter((m) => caps?.markets?.[m.id]);
     const without = ms.filter((m) => !caps?.markets?.[m.id]);
     const maxVal = Math.max(8, ...withCaps.flatMap((m) => caps.markets[m.id].segments.map((s) => (s.range ? s.range[1] : s.value))));
+    const segRow = (s, c, label) => `
+      <div class="segrow">
+        <span>${esc(label)}${s.name !== label ? ` <span class="seg-detail">${esc(s.name)}</span>` : ''}</span>
+        <b>${fmtSeg(s, c.approximate)}</b>
+        <div class="bar"><div style="width:${((s.range ? s.range[1] : s.value) / maxVal * 100).toFixed(1)}%"></div></div>
+      </div>`;
     const cards = withCaps.map((m) => {
       const c = caps.markets[m.id];
       const y = rates && summary('yield10y', m.id);
       const head = c.segments.find((s) => s.name === c.headline) || c.segments[0];
       const sel = state.selected.includes(m.id);
+      const all = c.segments.filter((s) => s.sector === 'all');
+      const rows = all.map((s) => segRow(s, c, 'All property')).join('') + sectors.map((sec) => {
+        const segs = c.segments.filter((s) => s.sector === sec.id);
+        if (!segs.length) return `<div class="segrow missing"><span>${esc(sec.name)}</span><span class="muted">Not covered</span></div>`;
+        return segs.map((s) => segRow(s, c, sec.name)).join('');
+      }).join('');
       return `<article class="card market-card ${sel ? 'selected' : ''}" data-market="${m.id}" tabindex="0" role="button" aria-pressed="${sel}"${sel ? ` style="outline-color:${slotColor(m.id)}"` : ''}>
         <div class="head">
-          <div><div class="name">${esc(m.name)}</div><div class="sub">${esc(c.measure)}</div></div>
+          <div><div class="name">${esc(m.name)}</div><div class="sub">${esc(c.measure)} · ${esc(c.scope)}</div></div>
           <span class="badge">${fmtDate(c.asOf, true)}</span>
         </div>
-        <div class="segments">${c.segments.map((s) => `
-          <div class="segrow">
-            <span>${esc(s.name)}</span>
-            <b>${s.range ? `${s.range[0].toFixed(2)}–${s.range[1].toFixed(2)}%` : fmtPct(s.value)}</b>
-            <div class="bar"><div style="width:${((s.range ? s.range[1] : s.value) / maxVal * 100).toFixed(1)}%"></div></div>
-          </div>`).join('')}
-        </div>
+        <div><span class="badge basis-${esc(c.basis)}">${c.basis === 'prime' ? 'Prime yield' : 'Average cap rate'}</span>${c.approximate ? ' <span class="badge warn" title="Rounded figures from coverage of the report">approx.</span>' : ''}</div>
+        <div class="segments">${rows}</div>
         ${y ? `<div class="sub">${esc(head.name)} spread over 10Y yield: <b style="color:var(--ink)">${fmtBp(head.value - y.value)}</b> <span class="muted">(10Y ${fmtPct(y.value)}, ${fmtDate(y.date, true)})</span></div>` : ''}
         ${c.note ? `<div class="sub">${esc(c.note)}</div>` : ''}
-        <div class="source">Source: <a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">${esc(c.source)}</a></div>
+        <div class="source">Source: <a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">${esc(c.source)}</a> · <a href="#/sources">all sources</a></div>
       </article>`;
     }).join('');
     return `${banner()}
-      <div class="note">Cap rates aren't published as a free live feed: they come from periodic broker surveys (CBRE, Knight Frank, Cushman &amp; Wakefield…).
-        Readings below are curated in <code>site/data/cap-rates.json</code> (last reviewed ${esc(caps?.updated || '—')}) and should be updated when new surveys are released.
-        Definitions differ (average vs prime yields), so compare across markets with care.</div>
+      <div class="note">Cap rates come only from named broker research reports; there is no free live feed. Every card shows the same four sectors, and a sector
+        the report doesn't cover is marked <b>Not covered</b> rather than filled from weaker sources. <b>Prime</b> yields (best-in-class assets) run lower than
+        <b>average</b> cap rates, so compare across markets with care. Last reviewed ${esc(caps?.updated || '—')} · <a href="#/sources">full source list</a>.</div>
       <div class="grid section">${cards || '<div class="card">No cap rate readings for this region yet.</div>'}</div>
       ${without.length ? `<div class="sub section">No cap rate survey loaded for: ${without.map((m) => esc(m.name)).join(', ')}.</div>` : ''}
       ${timelineSection('cap')}`;
+  }
+
+  function viewSources() {
+    const ms = marketsInRegion();
+    const link = (url, text) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+    const policyRows = ms.map((m) => {
+      const s = rates?.series?.policy?.[m.id];
+      return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.bank || '')}</td>
+        <td>${s?.seriesId ? `<code>${esc(s.seriesId)}</code>` : 'WS_CBPOL (daily)'}</td>
+        <td>${s ? fmtDate(s.lastObservation) + lagBadge(s.lastObservation) : '<span class="muted">not available</span>'}${s?.stale ? ' <span class="badge warn">stale</span>' : ''}</td></tr>`;
+    }).join('');
+    const yieldRows = ms.map((m) => {
+      const s = rates?.series?.yield10y?.[m.id];
+      if (!s) return `<tr><td><b>${esc(m.name)}</b></td><td colspan="3" class="muted">Not covered: no free series with a reliable official source</td></tr>`;
+      const id = s.seriesId || (s.sourceUrl || '').split('/').pop();
+      return `<tr><td><b>${esc(m.name)}</b></td><td>${link(s.sourceUrl, id)}</td><td>${esc(s.frequency)}</td>
+        <td>${fmtDate(s.lastObservation, true)}${lagBadge(s.lastObservation)}${s.stale ? ' <span class="badge warn">stale</span>' : ''}</td></tr>`;
+    }).join('');
+    const capRows = ms.map((m) => {
+      const c = caps?.markets?.[m.id];
+      if (!c) return `<tr><td><b>${esc(m.name)}</b></td><td colspan="5" class="muted">Not covered</td></tr>`;
+      const extra = [...new Map(c.segments.filter((s) => s.source).map((s) => [s.sourceUrl, s])).values()];
+      return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(c.publisher)}</td>
+        <td>${link(c.sourceUrl, c.source)}${extra.length ? `<div class="seg-sources">${extra.map((s) => `${link(s.sourceUrl, s.source)}: ${esc(c.segments.filter((x) => x.sourceUrl === s.sourceUrl).map((x) => x.name).join(', '))}`).join('<br>')}</div>` : ''}</td>
+        <td>${c.basis === 'prime' ? 'Prime yield' : 'Average cap rate'}<div class="muted">${esc(c.scope)}</div></td>
+        <td>${fmtDate(c.asOf, true)}</td>
+        <td>${c.approximate ? '<span class="badge warn">approx.</span> ' : ''}${esc(c.note || '')}</td></tr>`;
+    }).join('');
+    return `${banner()}
+      <section class="card section sources">
+        <h3>Base rates: central bank policy rates</h3>
+        <p>${link('https://data.bis.org/topics/CBPOL', 'Bank for International Settlements (BIS): Central bank policy rates, dataset WS_CBPOL')}.
+          BIS collects the official policy rate from each central bank and publishes it daily. Fetched automatically twice a day via the
+          ${link('https://stats.bis.org/api-doc/v1/', 'BIS statistics API')}. The latest observation can lag the central bank's announcement by a few days.</p>
+        <div class="table-wrap"><table><thead><tr><th>Market</th><th>Central bank</th><th>BIS series</th><th>Latest observation</th></tr></thead><tbody>${policyRows}</tbody></table></div>
+      </section>
+      <section class="card section sources">
+        <h3>Interest rates: 10-year government bond yields</h3>
+        <p>${link('https://www.oecd.org/en/data/indicators/long-term-interest-rates.html', 'OECD Main Economic Indicators: long-term interest rates')}
+          (10-year government bond yields, monthly averages), retrieved from ${link('https://fred.stlouisfed.org/', 'FRED, Federal Reserve Bank of St. Louis')},
+          which republishes the OECD series. Fetched automatically twice a day; new months appear once the OECD publishes them, typically 1–2 months after month-end.</p>
+        <div class="table-wrap"><table><thead><tr><th>Market</th><th>FRED series</th><th>Frequency</th><th>Latest month</th></tr></thead><tbody>${yieldRows}</tbody></table></div>
+      </section>
+      <section class="card section sources">
+        <h3>Cap rates: commercial real estate yields</h3>
+        <p>Taken by hand from broker research reports; no free live feed exists. Only figures traceable to a named report are shown. Sectors a report doesn't cover are left blank.
+          Last reviewed ${esc(caps?.updated || '—')}.</p>
+        <div class="table-wrap"><table><thead><tr><th>Market</th><th>Publisher</th><th>Report</th><th>Basis</th><th>As of</th><th>Notes</th></tr></thead><tbody>${capRows}</tbody></table></div>
+      </section>
+      <section class="card section sources">
+        <h3>How the data is maintained</h3>
+        <ul>
+          <li>Base rates and 10Y yields are refreshed automatically twice daily by a scheduled GitHub Action, which republishes this site.</li>
+          <li>If a source can't be reached, the last good data is kept and marked <span class="badge warn">stale</span>; nothing is estimated or filled in.</li>
+          <li>Series whose latest observation is more than 4 months old are marked <span class="badge warn">lagging</span>.</li>
+          <li>Cap rates are updated manually when new reports are released (<code>site/data/cap-rates.json</code>).</li>
+        </ul>
+      </section>`;
   }
 
   // ---------- chart ----------
@@ -506,13 +579,13 @@
 
   // ---------- render & events ----------
   function currentMetric() {
-    return { dashboard: state.metric, policy: 'policy', yields: 'yield10y', caps: 'cap' }[state.route];
+    return { dashboard: state.metric, policy: 'policy', yields: 'yield10y', caps: 'cap', sources: null }[state.route];
   }
 
   function render() {
     renderNav();
     renderStatus();
-    const html = { dashboard: viewDashboard, policy: viewPolicy, yields: viewYields, caps: viewCaps }[state.route]();
+    const html = { dashboard: viewDashboard, policy: viewPolicy, yields: viewYields, caps: viewCaps, sources: viewSources }[state.route]();
     $('#content').innerHTML = html;
     drawChart(currentMetric());
   }

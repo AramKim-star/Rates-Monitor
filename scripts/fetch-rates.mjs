@@ -109,6 +109,7 @@ async function main() {
   for (const m of MARKETS) {
     const meta = {
       source: 'BIS central bank policy rates (WS_CBPOL)',
+      seriesId: `WS_CBPOL/D.${m.bis}`,
       sourceUrl: 'https://data.bis.org/topics/CBPOL',
       frequency: 'daily (change points)',
     };
@@ -128,6 +129,7 @@ async function main() {
     if (!m.fred) continue;
     const meta = {
       source: `FRED ${m.fred} (OECD Main Economic Indicators)`,
+      seriesId: m.fred,
       sourceUrl: `https://fred.stlouisfed.org/series/${m.fred}`,
       frequency: 'monthly average',
     };

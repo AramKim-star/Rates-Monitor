@@ -29,9 +29,29 @@ untouched.
 
 No free, licence-clean live feed exists for cap rates. Brokers publish them in
 quarterly or semi-annual surveys. When a new survey comes out, update the
-market's entry in `site/data/cap-rates.json`: replace `segments`, change `asOf`
-and add the headline reading to `history`. The timeline builds up from those
+market's entry in `site/data/cap-rates.json`: replace `segments` (each tagged with a
+`sector`: office, industrial, retail, residential or all), change `asOf` and add the
+headline reading to `history`. The timeline builds up from those
 entries. Definitions vary (average vs prime yields), and each card names its measure and source.
+
+## Sources
+
+The site's **Sources** page (`#/sources`) lists every source live, including each series' latest observation.
+
+**Base rates**: [BIS central bank policy rates, dataset WS_CBPOL](https://data.bis.org/topics/CBPOL), daily, via the BIS statistics API. All 18 markets.
+
+**10-year yields**: [OECD Main Economic Indicators long-term interest rates](https://www.oecd.org/en/data/indicators/long-term-interest-rates.html), monthly averages, retrieved from [FRED](https://fred.stlouisfed.org/) (series `IRLTLT01{country}M156N`; India `INDIRLTLT01STM`). Not covered: Brazil, China, Hong Kong, Saudi Arabia.
+
+**Cap rates** (manual, from named broker reports only; sectors a report doesn't cover are left blank):
+
+| Market | Report | Basis |
+|---|---|---|
+| United States | [CBRE U.S. Cap Rate Survey H1 2026](https://www.cbre.com/insights/reports/us-cap-rate-survey-h1-2026) (rounded figures from coverage; marked approx.) | Average |
+| Canada | [CBRE Canadian Cap Rates & Investment Insights Q2 2026](https://www.cbre.ca/insights/reports/canada-cap-rates-investment-insights-q2-2026) | Average |
+| United Kingdom | Knight Frank Prime Yield Guides: [March](https://content.knightfrank.com/research/522/documents/en/investment-yield-guide-march-2026-12737.pdf), [April](https://www.knightfrank.co.uk/site-assets/research/report-pdfs/investment-yield-guide/04.-kf-final-april-2026-prime-yield-guide-1.pdf), [May 2026](https://www.knightfrank.co.uk/site-assets/research/report-pdfs/yield-guide/may-2026-prime-yield-guide.pdf) | Prime |
+| Euro Area (All-Europe) | [Cushman & Wakefield DNA of Real Estate Q2 2026](https://www.cushmanwakefield.com/en/united-kingdom/insights/dna-of-real-estate) | Prime |
+| Japan (Tokyo) | [CBRE Japan Cap Rate Survey, June 2026](https://www.cbre.co.jp/en/insights/reports/japan-cap-rate-survey-june-2026) | Prime |
+| Australia (Sydney) | [Knight Frank Sydney Industrial State of the Market Q2 2026](https://content.knightfrank.com/research/2868/documents/en/sydney-industrial-state-of-the-market-q2-2026-12930.pdf) | Prime |
 
 ## Setup
 
