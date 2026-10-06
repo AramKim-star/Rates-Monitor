@@ -1,4 +1,6 @@
-# Rates Monitor
+# Wevest Rates Monitor
+
+Branding: replace `site/logo.svg` with the official Wevest Asset Management logo (or point the `<img>` in `site/index.html` at a PNG). Theme colours are the tokens at the top of `site/styles.css`.
 
 A dashboard of **central bank base rates**, **10-year government bond yields** and
 **commercial real estate cap rates** across 18 markets. It has a dark sidebar, a
