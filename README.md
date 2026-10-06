@@ -102,3 +102,10 @@ scripts/              data pipeline (Node, no dependencies)
 tests/                node:test suites, mocked network
 .github/workflows/    scheduled refresh + Pages deploy
 ```
+
+## Copyright
+
+© 2026 Aram Kim. All rights reserved. See [LICENSE](LICENSE). No permission is
+granted to copy, modify or reuse this project without written permission.
+Third-party libraries in `site/vendor/` keep their own MIT licences, and market
+data remains the property of its original sources.

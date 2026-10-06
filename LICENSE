@@ -1,0 +1,14 @@
+Copyright (c) 2026 Aram Kim. All rights reserved.
+
+This repository and its contents (including the website design, source code,
+text and curated data files) are the property of Aram Kim. No permission is
+granted to copy, modify, distribute, publish or use any part of it, in whole
+or in part, without prior written permission from the copyright holder.
+
+Exceptions:
+- Third-party libraries in site/vendor/ (Chart.js and chartjs-adapter-date-fns)
+  remain under their own MIT licences; see the licence files in that folder.
+- Market data shown on the site remains the property of its original sources
+  (Bank for International Settlements, OECD, Federal Reserve Bank of St. Louis /
+  Board of Governors of the Federal Reserve System, CBRE, Knight Frank,
+  Cushman & Wakefield) and is subject to their terms of use.
