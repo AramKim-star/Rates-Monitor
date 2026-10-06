@@ -233,7 +233,7 @@ tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--row-color, va
 .seg-sources { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
 
 /* ---------- language switch (bottom of sidebar) ---------- */
-.lang-switch { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 10px 10px 12px; color: var(--sidebar-muted); font-size: 12.5px; }
+.lang-switch { display: flex; align-items: center; gap: 8px; padding: 10px 10px 12px; color: var(--sidebar-muted); font-size: 12.5px; }
 .lang-switch .lang-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .lang-switch .lang-seg { margin-left: auto; }
 .lang-seg { display: inline-flex; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 3px; gap: 2px; }
@@ -250,3 +250,8 @@ td .daily { font-size: 11.5px; color: var(--ink-2); font-weight: 400; margin-top
 .daily-figs .big { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
 .daily-figs .muted-big { color: var(--ink-2); }
 .daily-figs .delta { font-size: 12.5px; color: var(--ink-2); }
+
+/* Secondary links (Sources) sit at the bottom of the sidebar, out of the main menu */
+.nav-secondary { margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+.nav-secondary a { font-size: 13px; padding: 6px 10px; }
+.nav-secondary svg { width: 16px; height: 16px; }
