@@ -1,3 +1,4 @@
+/* Navy theme: navy sidebar, cool light-blue canvas. */
 :root {
   color-scheme: light;
   --sidebar-bg: #0b2545;
@@ -5,23 +6,23 @@
   --sidebar-muted: #9db0cb;
   --sidebar-active: #1d4477;
   --sidebar-hover: #14345e;
-  --accent: #f4c4aa;
-  --accent-ink: #2a1913;
+  --accent: #9ec5f4;
+  --accent-ink: #0b2545;
 
-  --page: #fbf3ee;
-  --glow-1: rgba(247, 205, 180, 0.55);
-  --glow-2: rgba(246, 196, 214, 0.45);
-  --card: #fffcfa;
-  --card-border: #f0e1d8;
-  --inset: #faf3ef;
-  --ink: #21140f;
-  --ink-2: #5b4a43;
-  --muted: #8d7a72;
-  --grid: #efe4de;
-  --axis: #d6c7bf;
-  --chip: #f6e9e2;
-  --chip-active: #2a1913;
-  --chip-active-ink: #fff7f2;
+  --page: #f3f6fb;
+  --glow-1: rgba(158, 197, 244, 0.45);
+  --glow-2: rgba(183, 211, 246, 0.35);
+  --card: #ffffff;
+  --card-border: #dfe6f1;
+  --inset: #f5f8fc;
+  --ink: #0b1b33;
+  --ink-2: #42526b;
+  --muted: #74839a;
+  --grid: #e7edf5;
+  --axis: #c6d1e0;
+  --chip: #e8eef7;
+  --chip-active: #0b2545;
+  --chip-active-ink: #ffffff;
   --up: #b4372f;
   --down: #12763a;
   --warn: #b26b00;
@@ -30,7 +31,7 @@
   --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
 
   --radius: 14px;
-  --shadow: 0 1px 2px rgba(42, 25, 19, 0.04), 0 4px 16px rgba(42, 25, 19, 0.04);
+  --shadow: 0 1px 2px rgba(11, 37, 69, 0.05), 0 4px 16px rgba(11, 37, 69, 0.05);
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -40,20 +41,20 @@
     --sidebar-bg: #071a33;
     --sidebar-active: #173a66;
     --sidebar-hover: #0f2a4d;
-    --page: #1b1311;
-    --glow-1: rgba(120, 62, 40, 0.30);
-    --glow-2: rgba(120, 45, 75, 0.22);
-    --card: #241a17;
-    --card-border: #3a2b26;
-    --inset: #2c201c;
-    --ink: #fbf1ec;
-    --ink-2: #d6c4bc;
-    --muted: #a08c84;
-    --grid: #33261f;
-    --axis: #4a3a33;
-    --chip: #32241f;
-    --chip-active: #f4c4aa;
-    --chip-active-ink: #2a1913;
+    --page: #0c1626;
+    --glow-1: rgba(42, 120, 214, 0.18);
+    --glow-2: rgba(29, 68, 119, 0.25);
+    --card: #13213a;
+    --card-border: #24365a;
+    --inset: #182945;
+    --ink: #eef3fa;
+    --ink-2: #c3cfe0;
+    --muted: #8a9ab3;
+    --grid: #1f3050;
+    --axis: #34496f;
+    --chip: #1c2e4e;
+    --chip-active: #9ec5f4;
+    --chip-active-ink: #0b2545;
     --up: #f07b72;
     --down: #4cc47a;
     --warn: #f0b04a;
@@ -64,10 +65,10 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --sidebar-bg: #071a33; --sidebar-active: #173a66; --sidebar-hover: #0f2a4d;
-  --page: #1b1311; --glow-1: rgba(120, 62, 40, 0.30); --glow-2: rgba(120, 45, 75, 0.22);
-  --card: #241a17; --card-border: #3a2b26; --inset: #2c201c;
-  --ink: #fbf1ec; --ink-2: #d6c4bc; --muted: #a08c84; --grid: #33261f; --axis: #4a3a33;
-  --chip: #32241f; --chip-active: #f4c4aa; --chip-active-ink: #2a1913;
+  --page: #0c1626; --glow-1: rgba(42, 120, 214, 0.18); --glow-2: rgba(29, 68, 119, 0.25);
+  --card: #13213a; --card-border: #24365a; --inset: #182945;
+  --ink: #eef3fa; --ink-2: #c3cfe0; --muted: #8a9ab3; --grid: #1f3050; --axis: #34496f;
+  --chip: #1c2e4e; --chip-active: #9ec5f4; --chip-active-ink: #0b2545;
   --up: #f07b72; --down: #4cc47a; --warn: #f0b04a;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
   --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
